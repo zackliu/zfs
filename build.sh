@@ -68,3 +68,28 @@ if [ ! -f "${DEPS_PREFIX}/lib/libsofa-pbrpc.a" ] \
     make install
     cd -
 fi
+
+# common
+if [ ! -f "${DEPS_PREFIX}/lib/libcommon.a" ]; then
+    rm -rf common
+    git clone -b cpp11 https://github.com/baidu/common
+    cd common
+    sed -i 's/^PREFIX=.*/PREFIX=..\/..\/thirdparty/' config.mk
+    sed -i '/^INCLUDE_PATH=*/s/$/ -I..\/..\/thirdparty\/boost_1_57_0/g' Makefile
+    make -j4
+    make install
+    cd -
+fi
+
+cd ${WORK_DIR}
+
+echo "PBRPC_PATH=./thirdparty" > depends.mk
+echo "PROTOBUF_PATH=./thirdparty" >> depends.mk
+echo "PROTOC_PATH=./thirdparty/bin/" >> depends.mk
+echo 'PROTOC=$(PROTOC_PATH)protoc' >> depends.mk
+echo "PBRPC_PATH=./thirdparty" >> depends.mk
+echo "BOOST_PATH=./thirdparty/boost_1_57_0" >> depends.mk
+#echo "GFLAG_PATH=./thirdparty" >> depends.mk
+#echo "GTEST_PATH=./thirdparty" >> depends.mk
+echo "COMMON_PATH=./thirdparty" >> depends.mk
+#echo "TCMALLOC_PATH=./thirdparty" >> depends.mk

@@ -1,0 +1,53 @@
+package zfs;
+
+option cc_generic_services = true;
+
+message VoteRequest
+{
+    optional int64 term = 2;
+    optional string candidate = 3;
+    optional int64 lastLogIndex = 4;
+    optional int64 lastLogTerm = 5;
+}
+
+message VoteResponse
+{
+    optional int64 term = 2;
+    optional bool voteGranted = 3;
+}
+
+enum LogType
+{
+    kUserLog = 0;
+    kRaftCmd = 1;
+}
+
+message LogEntry
+{
+    optional int64 index = 2;
+    optional int64 term = 3;
+    optional bytes logData = 4;
+    optional LogType type = 5;
+}
+
+message AppendEntriesRequest
+{
+    optional int64 term = 2;
+    optional string leader = 3;
+    optional int64 prevLogIndex = 4;
+    optional int64 prevLogTerm = 5;
+    repeated LogEntry entries = 6;
+    optional int64 leaderCommit = 7;
+}
+
+message AppendEntriesResponse
+{
+    optional int64 term = 2;
+    optional bool success = 3;
+}
+
+service RaftNode
+{
+    rpc Vote(VoteRequest) return(VoteResponse);
+    rpc AppendEntries(AppendEntriesRequest) return(AppendEntriesResponse);
+}

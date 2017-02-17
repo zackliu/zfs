@@ -1,0 +1,17 @@
+package zfs;
+
+message FileInfo
+{
+    optional int64 entryId = 1;
+    optional int64 version = 2;
+    optional int32 type = 3 [default = 0755];
+    repeated int64 blocks = 4;
+    optional uint32 ctime = 5;
+    optional string name = 6;
+    optional int64 size = 7;
+    optional int32 replicas = 8;
+    optional int64 parentEntryId = 9;
+    optional int32 owner = 10;
+    repeated string csAddrs = 11;
+    optional string symLink = 12;
+}

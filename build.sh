@@ -81,6 +81,40 @@ if [ ! -f "${DEPS_PREFIX}/lib/libcommon.a" ]; then
     cd -
 fi
 
+#leveldb
+if [ ! -f "${DEPS_PREFIX}/lib/libleveldb.a" ] \
+    || [ ! -d "${DEPS_PREFIX}/include/leveldb" ]; then
+    rm -rf leveldb
+    git clone https://github.com/lylei/leveldb.git leveldb
+    cd leveldb
+    echo "PREFIX=${DEPS_PREFIX}" > config.mk
+    make -j4
+    make install
+    cd -
+fi
+
+# cmake for gflags
+if ! which cmake ; then
+    wget https://cmake.org/files/v3.2/cmake-3.2.1.tar.gz
+    tar zxf cmake-3.2.1.tar.gz
+    cd cmake-3.2.1
+    ./configure --prefix=${DEPS_PREFIX}
+    make -j4
+    make install
+    cd -
+fi
+
+# gflags
+if [ ! -f "${DEPS_PREFIX}/lib/libgflags.a" ] \
+    || [ ! -d "${DEPS_PREFIX}/include/gflags" ]; then
+    git clone https://github.com/gflags/gflags.git gflags-2.2
+    cd gflags-2.2
+    cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC
+    make -j4
+    make install
+    cd -
+fi
+
 cd ${WORK_DIR}
 
 echo "PBRPC_PATH=./thirdparty" > depends.mk
@@ -89,7 +123,7 @@ echo "PROTOC_PATH=./thirdparty/bin/" >> depends.mk
 echo 'PROTOC=$(PROTOC_PATH)protoc' >> depends.mk
 echo "PBRPC_PATH=./thirdparty" >> depends.mk
 echo "BOOST_PATH=./thirdparty/boost_1_57_0" >> depends.mk
-#echo "GFLAG_PATH=./thirdparty" >> depends.mk
+echo "GFLAG_PATH=./thirdparty" >> depends.mk
 #echo "GTEST_PATH=./thirdparty" >> depends.mk
 echo "COMMON_PATH=./thirdparty" >> depends.mk
 #echo "TCMALLOC_PATH=./thirdparty" >> depends.mk

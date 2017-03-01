@@ -4,4 +4,5 @@ PROTOC_PATH=./thirdparty/bin/
 PROTOC=$(PROTOC_PATH)protoc
 PBRPC_PATH=./thirdparty
 BOOST_PATH=./thirdparty/boost_1_57_0
+GFLAG_PATH=./thirdparty
 COMMON_PATH=./thirdparty

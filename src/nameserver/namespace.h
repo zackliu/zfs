@@ -18,7 +18,7 @@ class NameSpace
 {
 public:
     NameSpace();
-    void activate(std::function<void (const FileInfo&)> rebuild_callback, NameServerLog *log);
+    void activateDb(std::function<void (const FileInfo&)> rebuild_callback, NameServerLog *log);
     ~NameSpace();
 
     StatusCode listDirectory(const std::string &path, google::protobuf::RepeatedPtrField<FileInfo>* outputs);
@@ -50,13 +50,13 @@ private:
     bool getLinkSrcPath(const FileInfo &info, FileInfo *srcInfo);
     StatusCode buildPath(const std::string &path, FileInfo *fileInfo, std::string *fileName, NameServerLog* log = NULL);
     static void encodingStoreKey(int64_t entryId, const std::string &path, std::string *keyStr);
-    static void decodingStoreKey(const std::string &keyStr, int64_t entryId, std::string *path);
+    static void decodingStoreKey(const std::string &keyStr, int64_t *entryId, std::string *path);
     bool getFromStore(const std::string &key, FileInfo *info);
     void setupRoot();
-    bool lookup(const std::string &path, FileInfo *info);
-    bool lookup(int64_t pid, const std::string &name, FileInfo *info);
+    bool lookUp(const std::string &path, FileInfo *info);
+    bool lookUp(int64_t pid, const std::string &name, FileInfo *info);
     StatusCode internalDeleteDirectory(const FileInfo &dirInfo, bool recursive, std::vector<std::string> *filesRemoved, NameServerLog *log);
-    StatusCode InternalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze);
+    StatusCode internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze);
     uint32_t encodeLog(NameServerLog *log, int32_t type, const std::string &key, const std::string &value);
     void initBlockIdUpBound(NameServerLog *log);
     void updateBlockIdUpBound(NameServerLog *log);

@@ -89,7 +89,117 @@ bool NameSpace::rebuildBlockMap(std::function<void (const FileInfo&)> callback)
     int64_t blockNum = 0;
     int64_t fileNum = 0;
     int64_t linkNum = 0;
+    std::set<int64_t> entryIdSet;
+    entryIdSet.insert(rootPath.entryId());
+    leveldb::Iterator *it = db -> NewIterator(leveldb::ReadOptions());
+    for(it->Seek(std::string(7, '\0') + '\1'); it -> Valid(); it -> Next()) //从fatherEntryId=00000001开始找
+    {
+        FileInfo fileInfo;
+        bool ret = fileInfo.ParseFromArray(it->value().data(), it->value().size());
+        assert(ret);
+
+        if(lastEntryId < fileInfo.entryId())
+        {
+            lastEntryId = fileInfo.entryId();
+        }
+
+        FileType fileType = getFileType(fileInfo.type());
+        if(fileType == kDefault)
+        {
+            for(int i = 0; i < fileInfo.blocks_size(); i++)
+            {
+                if(fileInfo.blocks(i) >= nextBlockId)
+                {
+                    nextBlockId = fileInfo.block(i)+1;
+                    blockIdUpBound = nextBlockId;
+                }
+                blockNum++;
+            }
+            fileNum++;
+            if(callback)
+            {
+                callback(fileInfo);
+            }
+        }
+        else if(fileType == kSymlink)
+        {
+            linkNum++;
+        }
+        else
+        {
+            entryIdSet.insert(fileInfo.entryId());
+        }
+    }
+
+    LOG(INFO, "rebuildBlockMap done. %ld directories, %ld symlinks, %ld files, %lu blocks, lastEntryId = E%ld", 
+        entryIdSet.size(), linkNum, fileNum, blockNum, lastEntryId);
     
+    if(FLAGS_checkOrphan)
+    {
+        std::vector<std::pair<std::string, std::string> > orphanEntries;
+        for(it -> Seek(std::string(7, '\0') + '\1'); it -> Valid(); it -> Next())
+        {
+            FileInfo fileInfo;
+            bool ret = fileInfo.ParseFromArray(it->value().data(), it->value().size());
+            assert(ret);
+            int64_t parentEntryId = 0;
+            std::string fileName;
+            decodingStoreKey(it->key().ToString(), &parentEntryId, &fileName);
+            if(entryIdSet.find(parentEntryId) == entryIdSet.end())
+            {
+                LOG(WARNING, "Orphan entry PE%ld E%ld %s", parentEntryId, fileInfo.entryId(), fileName.c_str());
+                orphanEntries.push_back(std::make_pair(it->key().ToString(), it->key().ToString()));
+            }
+            LOG(INFO, "Check orphhan done, %lu entries", orphanEntries.size());
+        } 
+    }
+
+    delete it;
+    return true;
+}
+
+void NameSpace::initBlockIdUpbound(NameServerLog *log)
+{
+    std::string blockIdUpboundKey(8, 0);
+    blockIdUpboundKey.append("blockIdUpbound");
+    std::string blockIdUpboundVal;
+    leveldb::Status s = db -> Get(leveldb::ReadOptions(), blockIdUpboundKey, &blockIdUpboundVal);
+    if(s.IsNotFound())
+    {
+        LOG(INFO, "Init block id upbound");
+        updateBlockIdUpbound(log);
+    }
+    else if (s.ok())
+    {
+        blockIdUpBound = *(reinterpret_cast<int64_t*>(&blockIdUpboundVal[0]));
+        nextBlockId = blockIdUpBound;
+        LOG(INFO, "Load block id upbound: %ld", blockIdUpBound);
+        updateBlockIdUpbound(log);
+    }
+    else 
+    {
+        LOG(FATAL, "Load block id upbound failed: %s", s.ToString().c_str());
+    }
+}
+
+void NameSpace::updateBlockIdUpbound(NameServerLog *log)
+{
+    std::string blockIdUpboundKey(8, 0);
+    blockIdUpboundKey.append("blockIdUpbound");
+    std::string blockIdUpboundVal;
+    blockIdUpboundVal.resize(8);
+    blockIdUpBound += FLAGS_blockIdAllocationSize; //??
+    *(reinterpret_cast<int64_t*>(&blockIdUpboundVal[0])) = blockIdUpBound;
+    leveldb::Status s = db -> Put(leveldb::WriteOptions(), blockIdUpboundKey, blockIdUpboundVal);
+    if(!s.ok())
+    {
+        LOG(FATAL, "Update block id upbound fail: %s", s.ToString().c_str());
+    }
+    else 
+    {
+        LOG(INFO, "Update block id upbound to %ld", blockIdUpBound);
+    }
+    encodeLog(log, kSyncWrite, blockIdUpboundKey, blockIdUpboundVal);
 }
 
 NameSpace::~NameSpace()

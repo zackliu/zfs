@@ -58,8 +58,8 @@ private:
     StatusCode internalDeleteDirectory(const FileInfo &dirInfo, bool recursive, std::vector<std::string> *filesRemoved, NameServerLog *log);
     StatusCode internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze);
     uint32_t encodeLog(NameServerLog *log, int32_t type, const std::string &key, const std::string &value);
-    void initBlockIdUpBound(NameServerLog *log);
-    void updateBlockIdUpBound(NameServerLog *log);
+    void initBlockIdUpbound(NameServerLog *log);
+    void updateBlockIdUpbound(NameServerLog *log);
 
 private:
     leveldb::DB *db;

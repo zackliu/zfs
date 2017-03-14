@@ -281,7 +281,112 @@ bool NameSpace::getFromStore(const std::string &key, FileInfo *info)
     return true;
 }
 
+StatusCode NameSpace::listDirectory(const std::string &path, google::protobuf::RepeatedPtrField<FileInfo> *outputs)
+{
+    outputs->Clear();
+    FileInfo fileInfo;
+    if（!lookUp(path, &fileInfo))
+    {
+        return kNsNotFound;
+    }
 
+    if(getFileType(fileInfo.type()) != kDir)
+    {
+        FileInfo *pFileInfo = outputs->Add();
+        pFileInfo->CopyFrom(fileInfo);
+        pFileInfo->clear_name();
+        LOG(INFO, "List %s return %ld items", path.c_str(), outputs->size());
+        return kOK;
+    }
 
+    int64_t entryId = fileInfo.entryId();
+    LOG(DEBUG, "listDirectory entryId = E%ld", entryId);
+    common::timer::AutoTimer autoTimer(100, "listDirectory iterate", path.c_str()); //析构时自动计算时间
+    std::string keyStart, keyEnd;
+    encodingStoreKey(entryId, "", &keyStart);//搜索同一父id下的文件
+    encodingStoreKey(entryId + 1, "", &keyEnd);
+    leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
+    for(it->Seek(keyStart); it->Valid(); it->Next())
+    {
+        leveldb::Slice key = it -> key();
+        if(key.compare(keyEnd) >= 0)
+        {
+            break;
+        }
+        FileInfo *pFileInfo = outputs -> Add();
+        bool ret = pFileInfo->ParseFromArray(it->value().data(), it->value().size());
+        assert(ret);
+        pFileInfo->set_name(std::string(key.data()+8, key.size()-8));//从第8位开始，即自己的name
+        LOG(DEBUG, "List %s return %s[%s]", path.c_str(), pFileInfo->name().c_str(), common::DebugString(key.ToString().c_str()));
+    }
+
+    LOG(INFO, "List return %ld items", outputs->size());
+    delete it;
+    return kOK;
+}
+
+StatusCode NameSpace::buildPath(const std::string &path, FileInfo *fileInfo, std::string *fileName, NameServerLog* log = NULL)
+{
+    std::vector<std::string> paths;
+    if(!common::util::SplitPath(path, &paths))
+    {
+        LOG(WARNING, "path split failed %s", path.c_str());
+        return kBadParameter;
+    }
+
+    int64_t parentId = kRootEntryId;
+    int depth = paths.size();
+    fileInfo->set_entryId(parentId);
+    std::string infoValue;
+    for(int i = 0; i < depth-1; i++)
+    {
+        if(!lookUp(parentId, path[i], fileInfo))
+        {
+            fileInfo->set_type((1<<9)|01755);//dir
+            fileInfo->set_ctime(time(NULL));
+            fileInfo->set_entryId(common::atomic_add64(&lastEntryId, 1) + 1);
+            fileInfo->SerializeToString(&infoValue);
+            std::string keyStr;
+            encodingStoreKey(parentId, path[i], &keyStr);
+            leveldb::Status s = db->Put(leveldb::WriteOptions(), keyStr, infoValue);
+            assert(s.ok());
+            encodeLog(log, kSyncWrite, keyStr, infoValue);
+            LOG(INFO, "Create path recursively: %s E%ld", path[i].c_str(), fileInfo->entryId());
+        }
+        else 
+        {
+            if(getFileType(fileInfo->tyep()) != kDir)
+            {
+                LOG(INFO, "Create path fail: %s is not a directory", path[i].c_str());
+                return kBadParameter;   
+            }
+        }
+        parentId = fileInfo->entryId();
+    }
+    *fileName = paths[depth - 1];
+    return kOK;
+}
+
+StatusCode NameSpace::createFile(const std::string &filePathAndName, int flag, int mode, int replicaNum, std::vector<int64_t>* blocksToRemove, NameServerLog *log = NULL)
+{
+    if(filePathAndName == "/")
+    {
+        return kBadParameter;
+    }
+    FileInfo parentFileInfo, fileInfo;
+    std::string fileName, infoValue;
+    StatusCode status = buildPath(filePathAndName, &parentFileInfo, &fileName, log);
+    if(status != kOK)
+    {
+        return status;
+    }
+    int64_t parentId = parentFileInfo.entryId();
+    bool exist = lookUp(parentId, fileName, &fileInfo);
+
+    if(exist)
+    {
+        
+    }
+}
 
 }

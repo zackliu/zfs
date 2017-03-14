@@ -1,3 +1,6 @@
 {
-    "GOROOT": "${HOME}/cloudstorage"
+    "GOROOT": "${HOME}/cloudstorage",
+    "files.associations": {
+        "*.ipp": "cpp"
+    }
 }

@@ -22,9 +22,9 @@ public:
     ~NameSpace();
 
     StatusCode listDirectory(const std::string &path, google::protobuf::RepeatedPtrField<FileInfo>* outputs);
-    StatusCode createFile(const std::string &fileName, int flag, int mode, int replicaNum, std::vector<int64_t>* blocksToRemove, NameServerLog *log = NULL);
-    StatusCode removeFile(const std::string &path, FileInfo *fileRemoved, NameServerLog *log = NULL);
-    StatusCode deleteDirectory(const std::string &path, bool recursive, std::vector<FileInfo*> fileRemoved, NameServerLog *log = NULL);
+    StatusCode createFile(const std::string &filePathAndName, int flag, int mode, int replicaNum, std::vector<int64_t>* blocksToRemove, NameServerLog *log = NULL);
+    StatusCode removeFile(const std::string &filePathAndName, FileInfo *fileRemoved, NameServerLog *log = NULL);
+    StatusCode deleteDirectory(const std::string &path, bool recursive, std::vector<FileInfo> *fileRemoved, NameServerLog *log = NULL);
     StatusCode diskUsage(const std::string &path, uint64_t *diskUseageSize);
     StatusCode Rename(const std::string &oldPath, const std::string &newPath, bool *needUnlink, FileInfo *removedFile, NameServerLog *log = NULL);
     StatusCode Symlink(const std::string &src, const std::string &dst, NameServerLog *log = NULL);
@@ -55,7 +55,7 @@ private:
     void setupRoot();
     bool lookUp(const std::string &path, FileInfo *info);
     bool lookUp(int64_t pid, const std::string &name, FileInfo *info);
-    StatusCode internalDeleteDirectory(const FileInfo &dirInfo, bool recursive, std::vector<std::string> *filesRemoved, NameServerLog *log);
+    StatusCode internalDeleteDirectory(const FileInfo &dirInfo, bool recursive, std::vector<FileInfo> *filesRemoved, NameServerLog *log);
     StatusCode internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze);
     uint32_t encodeLog(NameServerLog *log, int32_t type, const std::string &key, const std::string &value);
     void initBlockIdUpbound(NameServerLog *log);

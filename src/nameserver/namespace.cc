@@ -385,8 +385,214 @@ StatusCode NameSpace::createFile(const std::string &filePathAndName, int flag, i
 
     if(exist)
     {
-        
+        if((flag & _TRUNC) == 0)
+        {
+            LOG(INFO, "createFile %s failed: Already existed", fileName.c_str());
+            return kFileExists;
+        }
+        else //将打开的文件清零,必须是普通文件
+        {
+            if(getFileType(fileInfo.type()) == kDir)
+            {
+                LOG(INFO, "createFile %s failed: directory with the same name existed", fileName.c_str());
+                return kFileExists;
+            }
+            for(int i = 0; i < fileInfo.blocks_size(); i++)
+            {
+                blocksToRemove->push_back(fileInfo.blocks(i));
+            }
+        }
+    }
+
+    //set new created file info and SerializeToString
+    fileInfo.set_type(((1 << 11) - 1) & mode); //11,111,111,111 & mode
+    fileInfo.set_entryId(common::atomic_add64(&lastEntryId, 1) + 1);
+    fileInfo.set_ctime(time(NULL));
+    fileInfo.set_replicas(replicaNum<=0 ? FLAGS_defaultReplicaNum : replicaNum);
+    fileInfo.SerializeToString(&infoValue);
+
+    //use key and value to store in the leveldb
+    std::string infoKey;
+    encodingStoreKey(parentId, fileName, &infoKey);
+    leveldb::Status s = db->Put(leveldb::WriteOptions(), infoKey, infoValue);
+    if(s.ok())
+    {
+        LOG(INFO, "createFile %s E%ld ", filePathAndName.c_str(), fileInfo.entryId());
+        return kOK;
+    }
+    else 
+    {
+        LOG(WARNING, "createFile %s failed: db put failed %s", filePathAndName.c_str(), s.ToString().c_str());
+        return kUpdateError;
     }
 }
 
+bool NameSpace::deleteFileInfo(const std::string fileKey, NameServerLog* log = NULL)
+{
+    leveldb::Status s = db->Delete(leveldb::WriteOptions(), fileKey);
+    if(!s.ok())
+    {
+        return false;
+    }
+    encodeLog(log, kSyncDelete, fileKey, "");
+    return true;
+}
+
+StatusCode NameSpace::removeFile(const std::string &filePathAndName, FileInfo *fileRemoved, NameServerLog *log = NULL)
+{
+    StatusCode retStatus = kOK;
+    if(lookUp(filePathAndName, fileRemoved))
+    {
+        if(getFileType(fileRemoved->type()) != kDir)
+        {
+            if(filePathAndName == "/" || filePathAndName.empty())
+            {
+                LOG(INFO, "root type = %d", fileRemoved->type());
+            }
+
+            std::string fileKey;
+            encodingStoreKey(fileRemoved->parentEntryId(), fileRemoved->name(), &fileKey);
+            if(deleteFileInfo(fileKey, log))
+            {
+                LOG(INFO, "Unlink done: %s", filePathAndName.c_str());
+            }
+            else 
+            {
+                LOG(WARNING, "Unlink failed: %s", filePathAndName.c_str());
+                retStatus = kUpdateError;
+            }
+        }
+        else 
+        {
+            LOG(WARNING, "Unlink doesn't support directory: %s", filePathAndName.c_str());
+            retStatus = kBadParameter;
+        }
+    }
+    else 
+    {
+        LOG(INFO, "Unlink is not found: %s", filePathAndName.c_str());
+        retStatus = kNsNotFound;
+    }
+    return retStatus;
+}
+
+StatusCode NameSpace::internalDeleteDirectory(const FileInfo &dirInfo, bool recursive, std::vector<FileInfo> *filesRemoved, NameServerLog *log)
+{
+    int64_t entryId = dirInfo.entryId();
+    std::string keyStart, keyEnd;
+    encodingStoreKey(entryId, "", &keyStart);
+    encodingStoreKey(entryId+1, "", &keyEnd);
+
+    leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
+    it->Seek(keyStart);
+    //有子文件但是不允许递归删除
+    if(it->Valid() && it->Key().compare(keyEnd) < 0 && recursive == false)
+    {
+        LOG(INFO, "The directory is not empty :%s", dirInfo.name().c_str());
+        delete it;
+        return kDirNotEmpty;
+    }
+
+    StatusCode retStatus = kOK;
+    leveldb::WriteBatch batch;
+    for(; it->Valid(); it->Next())
+    {
+        leveldb::Slice key = it->key();
+        if(key.compare(keyEnd) >= 0)
+        {
+            break;
+        }
+        std::string childName(key.data()+8, key.size()-8);
+        FileInfo childInfo;
+        bool ret = childInfo.ParseFromArray(it->value().data(), it->value().size());
+        assert(ret);
+        if(getFileType(childInfo.type()) == kDir)
+        {
+            childInfo.set_parentEntryId(entryId);
+            childInfo.set_name(childName);
+            LOG(INFO, "recursive to path %s", childName.c_str());
+            retStatus = internalDeleteDirectory(childInfo, true, filesRemoved, log);
+            if(retStatus != kOK)
+            {
+                break;
+            }
+        }
+        else 
+        {
+            encodeLog(log, kSyncDelete, std::string(key.data(), key.size()), "");
+            batch.Delete(key);
+            childInfo.set_parentEntryId(entryId);
+            childInfo.set_name(childName);
+            LOG(DEBUG, "deleteDirectory remove push %s", childName.c_str());
+            filesRemoved->push_back(childInfo);
+            LOG(INFO, "Unlink file: %s", childName.c_str());
+        }
+    }
+    delete it;
+
+    std::string storeKey;
+    encodingStoreKey(dirInfo.parentEntryId(), dirInfo.name(), &storeKey);
+    batch.Delete(storeKey);
+    EncodeLog(log, kSyncDelete, storeKey, "");
+
+    leveldb::Status s = db->Write(leveldb::WriteOptions(), batch);
+    if(s.ok())
+    {
+        LOG(INFO, "deleteDirectory done: %s", dirInfo.name().c_str());
+    }
+    else 
+    {
+        LOG(INFO, "Unlink directory failed: %s", dirInfo.name().c_str());
+        LOG(FATAL, "NameSpace write to storage failed");
+        retStatus = kUpdateError;
+    }
+    return retStatus;
+}
+
+
+StatusCode NameSpace::deleteDirectory(const std::string &path, bool recursive, std::vector<FileInfo> *fileRemoved, NameServerLog *log = NULL)
+{
+    fileRemoved->clear();
+    FileInfo fileInfo;
+    if(!lookUp(path, &fileInfo))
+    {
+        LOG(INFO, "deleteDirectory, %s is not found", path.c_str())
+        return kNsNotFound;
+    }
+    else if (getFileType(fileInfo.type()) != kDir)
+    {  
+        LOG(WARNING, "deleteDirectory, %s is not a directory", path.c_str());
+        return kBadParameter;
+    }
+    return internalDeleteDirectory(fileInfo, recursive, fileRemoved, log);
+}
+
+
+StatusCode NameSpace::internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze)
+{
+    
+}
+
+
+StatusCode NameSpace::diskUsage(const std::string &path, uint64_t *diskUseageSize)
+{
+    if(diskUseageSize == NULL)
+    {
+        return kBadParameter;
+    }
+
+    *diskUseageSize = 0;
+    FileInfo fileInfo;
+    if(!lookUp(path, &fileInfo))
+    {
+        LOG(INFO, "diskUsage file or directory not found : %s", path.c_str());
+        return kNsNotFound;
+    }
+    else if(getFileType(fileInfo.type()) != kDir)
+    {
+        *diskUseageSize = fileInfo.size();
+        return kOK;
+    }
+    return internalComputeDiskUsage(fileInfo, diskUseageSize);
+}
 }

@@ -1,6 +1,22 @@
 {
     "GOROOT": "${HOME}/cloudstorage",
     "files.associations": {
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "cctype": "cpp",
+        "clocale": "cpp",
+        "cmath": "cpp",
+        "csetjmp": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "cstddef": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "cwchar": "cpp",
+        "cwctype": "cpp",
+        "*.in": "cpp",
+        "cstdint": "cpp",
+        "initializer_list": "cpp"
     }
 }

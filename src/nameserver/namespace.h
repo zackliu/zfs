@@ -26,8 +26,8 @@ public:
     StatusCode removeFile(const std::string &filePathAndName, FileInfo *fileRemoved, NameServerLog *log = NULL);
     StatusCode deleteDirectory(const std::string &path, bool recursive, std::vector<FileInfo> *fileRemoved, NameServerLog *log = NULL);
     StatusCode diskUsage(const std::string &path, uint64_t *diskUseageSize);
-    StatusCode Rename(const std::string &oldPath, const std::string &newPath, bool *needUnlink, FileInfo *removedFile, NameServerLog *log = NULL);
-    StatusCode Symlink(const std::string &src, const std::string &dst, NameServerLog *log = NULL);
+    StatusCode rename(const std::string &oldPath, const std::string &newPath, bool *needUnlink, FileInfo *removedFile, NameServerLog *log = NULL);
+    StatusCode symlink(const std::string &src, const std::string &dst, NameServerLog *log = NULL);
 
     bool getFileInfo(const std::string &path, FileInfo *fileInfo);
     bool updateFileInfo(const FileInfo &fileInfo, NameServerLog* log = NULL);
@@ -56,7 +56,7 @@ private:
     bool lookUp(const std::string &path, FileInfo *info);
     bool lookUp(int64_t pid, const std::string &name, FileInfo *info);
     StatusCode internalDeleteDirectory(const FileInfo &dirInfo, bool recursive, std::vector<FileInfo> *filesRemoved, NameServerLog *log);
-    StatusCode internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze);
+    StatusCode internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSize);
     uint32_t encodeLog(NameServerLog *log, int32_t type, const std::string &key, const std::string &value);
     void initBlockIdUpbound(NameServerLog *log);
     void updateBlockIdUpbound(NameServerLog *log);

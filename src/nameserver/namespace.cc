@@ -568,9 +568,43 @@ StatusCode NameSpace::deleteDirectory(const std::string &path, bool recursive, s
 }
 
 
-StatusCode NameSpace::internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSIze)
+StatusCode NameSpace::internalComputeDiskUsage(const FileInfo &info, uint64_t *diskUsageSize)
 {
-    
+    int64_t entryId = info.entryId();
+    std::string keyStart, keyEnd;
+    encodingStoreKey(entryId, "", &keyStart);
+    encodingStoreKey(entryId + 1, "", &keyEnd);
+    leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
+    it->Seek(keyStart);
+
+    StatusCode retStatus = kOK;
+    for(; it->Valid(); it->Next())
+    {
+        leveldb::Slice key = it->key();
+        if(key.compare(keyEnd) >= 0)
+        {
+            break;
+        }
+        std::string childName(key.data()+8, key.size()-8);
+        FileInfo childInfo;
+        assert(childInfo.ParseFromArray(it->value().data(), it->value().size()));
+        if(getFileType(childInfo.type()) == kDir)
+        {
+            childInfo.set_parentEntryId(entryId);
+            retStatus = internalComputeDiskUsage(childInfo, diskUsageSize);
+            if(retStatus != kOK)
+            {
+                break;
+            }
+        }
+        else 
+        {
+            diskUsageSize += childInfo.size();
+        }
+    }
+
+    delete it;
+    return retStatus;
 }
 
 
@@ -595,4 +629,95 @@ StatusCode NameSpace::diskUsage(const std::string &path, uint64_t *diskUseageSiz
     }
     return internalComputeDiskUsage(fileInfo, diskUseageSize);
 }
+
+StatusCode NameSpace::rename(const std::string &oldPath, const std::string &newPath, bool *needUnlink, FileInfo *removedFile, NameServerLog *log = NULL)
+{
+    *needUnlink = false;
+    if(oldPath.empty() || newPath.empty() || oldPath == "/" || newPath == "/" || oldPath = newPath)
+    {
+        return kBadParameter;
+    }
+
+    FileInfo oldFileInfo;
+    if(!lookUp(oldPath, &oldFileInfo))
+    {
+        LOG(INFO, "Reanme old file not found: %s", oldPath.c_str());
+        return kNsNotFound;
+    }
+
+    std::vector<std::string> newPaths;
+    if(!common::util::SplitPath(newPath, newPaths))
+    {
+        LOG(INFO, "createFile split failed: %s", newPath.c_str());
+        return kBadParameter;
+    }
+
+    int64_t parentId = kRootEntryId;
+    for(uint32_t i = 0; i < newPaths.size()-1; i++)
+    {
+        FileInfo tempInfo;
+        if(!lookUp(parentId, newPaths[i], &tempInfo))
+        {
+            LOG(INFO, "Rename to %s is not exists", newPaths[i].c_str());
+            return kNsNotFound;
+        }
+        if(getFileType(tempInfo.type()) != kDir)
+        {
+            LOG(INFO, "Rename to %s is not a directory", newPath[i].c_str());
+            return kBadParameter;
+        }
+        if(tempInfo.entryId() == oldFileInfo.entryId())
+        {
+            LOG(INFO, "Rename to %s failed because %s is the parent directory of %s", newPath[i].c_str(), oldPath.c_str(), newPath.c_str());
+            return kBadParameter;
+        }
+        parentId = tempInfo.entryId();
+    }
+
+    const std::string &dstName = newPaths[newPaths.size()-1];
+    FileInfo dstFileInfo;
+    if(lookUp(parentId, dstName, &dstFileInfo))
+    {
+        if(getFileType(dstFileInfo.type()) == kDir || getFileType(oldFileInfo.type()) == kDir)
+        {
+            LOG(INFO, "Rename %s to %s failed: source or dist is not a file", oldPath.c_str(), newPath.c_str());
+            return kBadParameter;
+        }
+        if(getFileType(dstFileInfo.type()) != kSymlink)
+        {
+            *needUnlink = true;
+            removedFile->CopyFrom(dstFileInfo);
+            removedFile->set_name(dstName);
+        }
+    }
+
+    std::string oldKey, newKey;
+    encodingStorekey(oldFileInfo.parentEntryId(), oldFileInfo.name(), &oldKey);
+    encodingStoreKey(parentId, dstName, &newKey);
+
+    std::string value;
+    oldFileInfo.clear_parentEntryId();
+    oldFileInfo.clear_name();
+    oldFileInfo.SerializeToString(&value);
+
+    leveldb::WriteBatch batch;
+    batch.Put(newKey, value);
+    batch.Delete(oldKey);
+
+    //encodelog
+
+    leveldb::Status s = db->Write(leveldb::WriteOptions(), &batch);
+    if(s.ok())
+    {
+        LOG(INFO, "Rename %s to %s succeed", oldPah.c_str(), newPath.c_str());
+        return  kOK;
+    }
+    else
+    {
+        LOG(WARNING, "Rename %s to %s failed", oldPah.c_str(), newPath.c_str());
+        return kUpdateError;
+    }
+
+}
+
 }

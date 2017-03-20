@@ -33,7 +33,7 @@ class NameServerImpl : public NameServer
 public:
     NameServerImpl();
     virtual ~NameServerImpl();
-    void CreateFile(::google::protobuf::RpcController* controller,
+    void createFile(::google::protobuf::RpcController* controller,
                        const CreateFileRequest* request,
                        CreateFileResponse* response,
                        ::google::protobuf::Closure* done);
@@ -150,6 +150,15 @@ private:
                            int64_t block_id);
     void SetActualFileSize(FileInfo* file);
 
+private:
+        ThreadPool *readThreadPool;
+        ThreadPool *workThreadPool;
+        ThreadPool *reportThreadPool;
+        ThreadPool *heartbeatThreadPool;
+
+        ChunkServerManager *chunkserverManager;
+
+        BlockMappingManager *blockMappingManager;
 
 }
 }

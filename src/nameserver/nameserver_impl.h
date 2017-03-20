@@ -124,10 +124,10 @@ public:
     bool WebService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
 
 private:
-    void CheckLeader();
-    void RebuildBlockMapCallback(const FileInfo& file_info);
+    void checkLeader();
+    void rebuildBlockMapCallback(const FileInfo &fileInfo);
     void LogStatus();
-    void CheckRecoverMode();
+    void checkRecoverMode();
     void LeaveReadOnly();
     void ListRecover(sofa::pbrpc::HTTPResponse* response);
     bool LogRemote(const NameServerLog& log, std::function<void (bool)> callback);
@@ -160,7 +160,15 @@ private:
 
         BlockMappingManager *blockMappingManager;
 
-}
+        volatile bool readonly;
+        volatile int recoverTimeout;
+        RecoverMode recoverMode;
+        int64_t startTime;
+
+        NameSpcae *_namespace;
+        bool isLeader;
+
+};
 }
 
 

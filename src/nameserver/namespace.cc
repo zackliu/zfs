@@ -37,10 +37,10 @@ NameSpace::NameSpace():version(0), lastEntryId(1), blockIdUpBound(1), nextBlockI
         exit(1);
     }
     
-    activateDb(NULL, NULL);
+    //activateDb(NULL, NULL);
 }
 
-void NameSpace::activateDb(std::function<void (const FileInfo&)> rebuild_callback, NameServerLog *log)
+void NameSpace::activateDb(std::function<void (const FileInfo&)> callback, NameServerLog *log)
 {
     std::string versionKey(8, 0);
     versionKey.append("version");

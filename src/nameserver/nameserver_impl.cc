@@ -47,6 +47,6 @@ baidu::common::Counter gListDir;
 baidu::common::Counter gReportBlocks;
 extern baidu::common::Counter gBlocksNum;
 
-NameServerImpl::NameServerImpl()
+NameServerImpl::NameServerImpl(): 
 
 }

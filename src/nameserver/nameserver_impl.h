@@ -6,7 +6,7 @@
 #include <functional>
 #include <common/thread_pool.h>
 
-#include "proto/nameserver.pb.h"
+#include "../proto/nameserver.pb.h"
 
 #include <sofa/pbrpc/http.h>
 
@@ -15,17 +15,17 @@ namespace zfs
 
 enum RecoverMode
 {
-    kStopRecover = 0;
-    kHiOnly = 1;
-    kRevocerAll = 2;
+    kStopRecover = 0,
+    kHiOnly = 1,
+    kRevocerAll = 2,
 };
 
 enum DisplayMode
 {
-    kDisplayAll = 0;
-    kAliveOnly = 1;
-    kDeadOnly = 2;
-    kOverload = 3;
+    kDisplayAll = 0,
+    kAliveOnly = 1,
+    kDeadOnly = 2,
+    kOverload = 3,
 };
 
 class NameServerImpl : public NameServer 
@@ -37,124 +37,124 @@ public:
                        const CreateFileRequest* request,
                        CreateFileResponse* response,
                        ::google::protobuf::Closure* done);
-    void AddBlock(::google::protobuf::RpcController* controller,
+    void addBlock(::google::protobuf::RpcController* controller,
                        const AddBlockRequest* request,
                        AddBlockResponse* response,
                        ::google::protobuf::Closure* done);
-    void GetFileLocation(::google::protobuf::RpcController* controller,
+    void getFileLocation(::google::protobuf::RpcController* controller,
                        const FileLocationRequest* request,
                        FileLocationResponse* response,
                        ::google::protobuf::Closure* done);
-    void ListDirectory(::google::protobuf::RpcController* controller,
+    void listDirectory(::google::protobuf::RpcController* controller,
                        const ListDirectoryRequest* request,
                        ListDirectoryResponse* response,
                        ::google::protobuf::Closure* done);
-    void Stat(::google::protobuf::RpcController* controller,
+    void stat(::google::protobuf::RpcController* controller,
                        const StatRequest* request,
                        StatResponse* response,
                        ::google::protobuf::Closure* done);
-    void Rename(::google::protobuf::RpcController* controller,
+    void rename(::google::protobuf::RpcController* controller,
                        const RenameRequest* request,
                        RenameResponse* response,
                        ::google::protobuf::Closure* done);
-    void Unlink(::google::protobuf::RpcController* controller,
+    void unlink(::google::protobuf::RpcController* controller,
                        const UnlinkRequest* request,
                        UnlinkResponse* response,
                        ::google::protobuf::Closure* done);
-    void DeleteDirectory(::google::protobuf::RpcController* controller,
+    void deleteDirectory(::google::protobuf::RpcController* controller,
                          const DeleteDirectoryRequest* request,
                          DeleteDirectoryResponse* response,
                          ::google::protobuf::Closure* done);
-    void SyncBlock(::google::protobuf::RpcController* controller,
+    void syncBlock(::google::protobuf::RpcController* controller,
                        const SyncBlockRequest* request,
                        SyncBlockResponse* response,
                        ::google::protobuf::Closure* done);
-    void FinishBlock(::google::protobuf::RpcController* controller,
+    void finishBlock(::google::protobuf::RpcController* controller,
                        const FinishBlockRequest* request,
                        FinishBlockResponse* response,
                        ::google::protobuf::Closure* done);
-    void ChangeReplicaNum(::google::protobuf::RpcController* controller,
+    void changeReplicaNum(::google::protobuf::RpcController* controller,
                        const ChangeReplicaNumRequest* request,
                        ChangeReplicaNumResponse* response,
                        ::google::protobuf::Closure* done);
-    void HeartBeat(::google::protobuf::RpcController* controller,
+    void heartBeat(::google::protobuf::RpcController* controller,
                        const HeartBeatRequest* request,
                        HeartBeatResponse* response,
                        ::google::protobuf::Closure* done);
-    void Register(::google::protobuf::RpcController* controller,
-                       const ::baidu::bfs::RegisterRequest* request,
-                       ::baidu::bfs::RegisterResponse* response,
+    void registerService(::google::protobuf::RpcController* controller,
+                       const ::zfs::RegisterRequest* request,
+                       ::zfs::RegisterResponse* response,
                        ::google::protobuf::Closure* done);
-    void BlockReport(::google::protobuf::RpcController* controller,
+    void blockReport(::google::protobuf::RpcController* controller,
                        const BlockReportRequest* request,
                        BlockReportResponse* response,
                        ::google::protobuf::Closure* done);
-    void BlockReceived(::google::protobuf::RpcController* controller,
+    void blockReceived(::google::protobuf::RpcController* controller,
                        const BlockReceivedRequest* request,
                        BlockReceivedResponse* response,
                        ::google::protobuf::Closure* done);
-    void PushBlockReport(::google::protobuf::RpcController* controller,
+    void pushBlockReport(::google::protobuf::RpcController* controller,
                        const PushBlockReportRequest* request,
                        PushBlockReportResponse* response,
                        ::google::protobuf::Closure* done);
-    void SysStat(::google::protobuf::RpcController* controller,
+    void sysStat(::google::protobuf::RpcController* controller,
                        const SysStatRequest* request,
                        SysStatResponse* response,
                        ::google::protobuf::Closure* done);
-    void ShutdownChunkServer(::google::protobuf::RpcController* controller,
+    void shutdownChunkServer(::google::protobuf::RpcController* controller,
             const ShutdownChunkServerRequest* request,
             ShutdownChunkServerResponse* response,
             ::google::protobuf::Closure* done);
-    void ShutdownChunkServerStat(::google::protobuf::RpcController* controller,
+    void shutdownChunkServerStat(::google::protobuf::RpcController* controller,
             const ShutdownChunkServerStatRequest* request,
             ShutdownChunkServerStatResponse* response,
             ::google::protobuf::Closure* done);
-    void DiskUsage(::google::protobuf::RpcController* controller,
+    void diskUsage(::google::protobuf::RpcController* controller,
             const DiskUsageRequest* request,
             DiskUsageResponse* response,
             ::google::protobuf::Closure* done);
-    void Symlink(::google::protobuf::RpcController* controller,
+    void symlink(::google::protobuf::RpcController* controller,
             const SymlinkRequest* request,
             SymlinkResponse* response,
             ::google::protobuf::Closure* done);
-    void Chmod(::google::protobuf::RpcController* controller,
+    void chmod(::google::protobuf::RpcController* controller,
             const ChmodRequest* request,
             ChmodResponse* response,
             ::google::protobuf::Closure* done);
-    bool WebService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
+    bool webService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
 
 private:
     void checkLeader();
     void rebuildBlockMapCallback(const FileInfo &fileInfo);
-    void LogStatus();
+    void logStatus();
     void checkRecoverMode();
-    void LeaveReadOnly();
-    void ListRecover(sofa::pbrpc::HTTPResponse* response);
-    bool LogRemote(const NameServerLog& log, std::function<void (bool)> callback);
-    void SyncLogCallback(::google::protobuf::RpcController* controller,
+    void leaveReadOnly();
+    void listRecover(sofa::pbrpc::HTTPResponse* response);
+    bool logRemote(const NameServerLog& log, std::function<void (bool)> callback);
+    void syncLogCallback(::google::protobuf::RpcController* controller,
                          const ::google::protobuf::Message* request,
                          ::google::protobuf::Message* response,
                          ::google::protobuf::Closure* done,
                          std::vector<FileInfo>* removed,
                          bool ret);
-    void TransToString(const std::map<int32_t, std::set<int64_t> >& chk_set,
+    void transToString(const std::map<int32_t, std::set<int64_t> >& chk_set,
                        std::string* output);
-    void TransToString(const std::set<int64_t>& block_set, std::string* output);
-    void CallMethod(const ::google::protobuf::MethodDescriptor* method,
+    void transToString(const std::set<int64_t>& block_set, std::string* output);
+    void callMethod(const ::google::protobuf::MethodDescriptor* method,
                     ::google::protobuf::RpcController* controller,
                     const ::google::protobuf::Message* request,
                     ::google::protobuf::Message* response,
                     ::google::protobuf::Closure* done);
-    bool CheckFileHasBlock(const FileInfo& file_info,
+    bool checkFileHasBlock(const FileInfo& file_info,
                            const std::string& file_name,
                            int64_t block_id);
-    void SetActualFileSize(FileInfo* file);
+    void setActualFileSize(FileInfo* file);
 
 private:
-        ThreadPool *readThreadPool;
-        ThreadPool *workThreadPool;
-        ThreadPool *reportThreadPool;
-        ThreadPool *heartbeatThreadPool;
+        baidu::common::ThreadPool *readThreadPool;
+		baidu::common::ThreadPool *workThreadPool;
+        baidu::common::ThreadPool *reportThreadPool;
+        baidu::common::ThreadPool *heartbeatThreadPool;
 
         ChunkServerManager *chunkserverManager;
 

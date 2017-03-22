@@ -1,8 +1,10 @@
 // Auther: zackliu1995@hotmail.com
-import "file.proto"
-import "status_code.proto"
+import "file.proto";
+import "status_code.proto";
 
 package zfs;
+
+option cc_generic_services = true;
 
 message LocatedBlock 
 {
@@ -139,7 +141,7 @@ message RenameRequest
     optional string oldpath = 2;
     optional string newpath = 3;
 }
-s
+
 message RenameResponse 
 {
     optional int64 sequenceId = 1;
@@ -390,28 +392,28 @@ message SymlinkResponse
 
 service NameServer 
 {
-    rpc CreateFile(CreateFileRequest) returns(CreateFileResponse);
-    rpc AddBlock(AddBlockRequest) returns(AddBlockResponse);
-    rpc GetFileLocation(FileLocationRequest) returns(FileLocationResponse);
-    rpc ListDirectory(ListDirectoryRequest) returns(ListDirectoryResponse);
-    rpc Stat(StatRequest) returns(StatResponse);
-    rpc Rename(RenameRequest) returns(RenameResponse);
-    rpc SyncBlock(SyncBlockRequest) returns(SyncBlockResponse);
-    rpc FinishBlock(FinishBlockRequest) returns(FinishBlockResponse);
-    rpc Unlink(UnlinkRequest) returns(UnlinkResponse);
-    rpc DeleteDirectory(DeleteDirectoryRequest) returns(DeleteDirectoryResponse);
-    rpc ChangeReplicaNum(ChangeReplicaNumRequest) returns(ChangeReplicaNumResponse);
-    rpc ShutdownChunkServer(ShutdownChunkServerRequest) returns(ShutdownChunkServerResponse);
-    rpc ShutdownChunkServerStat(ShutdownChunkServerStatRequest) returns(ShutdownChunkServerStatResponse);
-    rpc DiskUsage(DiskUsageRequest) returns(DiskUsageResponse);
+    rpc createFile(CreateFileRequest) returns(CreateFileResponse);
+    rpc addBlock(AddBlockRequest) returns(AddBlockResponse);
+    rpc getFileLocation(FileLocationRequest) returns(FileLocationResponse);
+    rpc listDirectory(ListDirectoryRequest) returns(ListDirectoryResponse);
+    rpc stat(StatRequest) returns(StatResponse);
+    rpc rename(RenameRequest) returns(RenameResponse);
+    rpc syncBlock(SyncBlockRequest) returns(SyncBlockResponse);
+    rpc finishBlock(FinishBlockRequest) returns(FinishBlockResponse);
+    rpc unlink(UnlinkRequest) returns(UnlinkResponse);
+    rpc deleteDirectory(DeleteDirectoryRequest) returns(DeleteDirectoryResponse);
+    rpc changeReplicaNum(ChangeReplicaNumRequest) returns(ChangeReplicaNumResponse);
+    rpc shutdownChunkServer(ShutdownChunkServerRequest) returns(ShutdownChunkServerResponse);
+    rpc shutdownChunkServerStat(ShutdownChunkServerStatRequest) returns(ShutdownChunkServerStatResponse);
+    rpc diskUsage(DiskUsageRequest) returns(DiskUsageResponse);
 
-    rpc Register(RegisterRequest) returns(RegisterResponse);
-    rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
-    rpc BlockReport(BlockReportRequest) returns(BlockReportResponse);
-    rpc BlockReceived(BlockReceivedRequest) returns(BlockReceivedResponse);
-    rpc PushBlockReport(PushBlockReportRequest) returns(PushBlockReportResponse);
+    rpc registerService(RegisterRequest) returns(RegisterResponse);
+    rpc heartBeat(HeartBeatRequest) returns(HeartBeatResponse);
+    rpc blockReport(BlockReportRequest) returns(BlockReportResponse);
+    rpc blockReceived(BlockReceivedRequest) returns(BlockReceivedResponse);
+    rpc pushBlockReport(PushBlockReportRequest) returns(PushBlockReportResponse);
 
-    rpc SysStat(SysStatRequest) returns(SysStatResponse);
-    rpc Chmod(ChmodRequest) returns(ChmodResponse);
-    rpc Symlink(SymlinkRequest) returns(SymlinkResponse);
+    rpc sysStat(SysStatRequest) returns(SysStatResponse);
+    rpc chmod(ChmodRequest) returns(ChmodResponse);
+    rpc symlink(SymlinkRequest) returns(SymlinkResponse);
 }

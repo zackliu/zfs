@@ -417,3 +417,15 @@ service NameServer
     rpc chmod(ChmodRequest) returns(ChmodResponse);
     rpc symlink(SymlinkRequest) returns(SymlinkResponse);
 }
+
+message NsLogEntry
+{
+    optional int32 type = 1;
+    optional bytes key = 2;
+    optional bytes value = 3;
+}
+
+message NameServerLog
+{
+    repeated NsLogEntry entries = 1;
+}

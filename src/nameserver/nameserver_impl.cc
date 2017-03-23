@@ -14,11 +14,11 @@
 #include <common/logging.h>
 #include <common/string_util.h>
 
-#include "nameserver/block_mapping_manager.h"
-#include "nameserver/chunkserver_manager.h"
-#include "nameserver/namespace.h"
+#include "block_mapping.h"
+#include "chunkserver_manager.h"
+#include "namespace.h"
 
-#include "proto/status_code.pb.h"
+#include "../proto/status_code.pb.h"
 
 DECLARE_bool(bfsWebKickEnable);
 DECLARE_int32(nameserverStartRecoverTimeout);
@@ -27,7 +27,7 @@ DECLARE_int32(nameserverReportThreadNum);
 DECLARE_int32(nameserverWorkThreadNum);
 DECLARE_int32(nameserverReadThreadNum);
 DECLARE_int32(nameserverHeartbeatThreadNum);
-DECLARE_int32(blockmappingBucketNum);
+//DECLARE_int32(blockmappingBucketNum);
 DECLARE_int32(hiRecoverTimeout);
 DECLARE_int32(loRecoverTimeout);
 DECLARE_int32(blockReportTimeout);
@@ -50,7 +50,7 @@ extern baidu::common::Counter gBlocksNum;
 NameServerImpl::NameServerImpl(): readonly(true), recoverTimeout(FLAGS_nameserverStartRecoverTimeout),
                 recoverMode(kStopRecover)
 {
-    blockMappingManager = new BlockMappingManager(FLAGS_blockmappingBucketNum);
+    blockMappingManager = new BlockMappingManager();
     reportThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverReportThreadNum);
     readThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverReadThreadNum);
     workThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverWorkThreadNum);

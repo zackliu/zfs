@@ -6,7 +6,6 @@
 #include <gflags/gflags.h>
 #include <leveldb/db.h>
 #include <leveldb/cache.h>
-#include <leveldb/logging.h>
 #include <leveldb/write_batch.h>
 #include <common/logging.h>
 #include <common/timer.h>
@@ -28,18 +27,24 @@ NameSpace::NameSpace():version(0), lastEntryId(1), blockIdUpBound(1), nextBlockI
 {
     leveldb::Options options;
     options.create_if_missing = true;
-    options.block_cache = leveldb::NewLRUCache(FLAGS_namedbCacheSize * 1024L);
-    leveldb::Status s = leveldb::DB::Open(options, FLAGS_namedbPath, &db);
+    options.block_cache = leveldb::NewLRUCache(64 * 1024L);
+    leveldb::Status s = leveldb::DB::Open(options, "./db", &db);
     if(!s.ok())
     {
         db = NULL;
-        LOG(ERROR, "Open leveldb fails: %s", s.ToString().c_str());
+        LOG(baidu::common::ERROR, "Open leveldb fails: %s", s.ToString().c_str());
         exit(1);
     }
     
     //activateDb(NULL, NULL);
 }
 
+NameSpace::~NameSpace()
+{
+	delete db;
+	db = NULL;
+}
+/*
 void NameSpace::activateDb(std::function<void (const FileInfo&)> callback, NameServerLog *log)
 {
     std::string versionKey(8, 0);
@@ -202,11 +207,7 @@ void NameSpace::updateBlockIdUpbound(NameServerLog *log)
     encodeLog(log, kSyncWrite, blockIdUpboundKey, blockIdUpboundVal);
 }
 
-NameSpace::~NameSpace()
-{
-    delete db;
-    db = NULL;
-}
+
 
 int64_t NameSpace::getVersion() const
 {
@@ -719,5 +720,5 @@ StatusCode NameSpace::rename(const std::string &oldPath, const std::string &newP
     }
 
 }
-
+*/
 }

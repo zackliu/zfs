@@ -6,6 +6,9 @@
 #include <functional>
 #include <common/thread_pool.h>
 
+#include "namespace.h"
+#include "block_mapping.h"
+
 #include "../proto/nameserver.pb.h"
 
 #include <sofa/pbrpc/http.h>
@@ -37,7 +40,7 @@ public:
                        const CreateFileRequest* request,
                        CreateFileResponse* response,
                        ::google::protobuf::Closure* done);
-    void addBlock(::google::protobuf::RpcController* controller,
+/*    void addBlock(::google::protobuf::RpcController* controller,
                        const AddBlockRequest* request,
                        AddBlockResponse* response,
                        ::google::protobuf::Closure* done);
@@ -122,8 +125,9 @@ public:
             ChmodResponse* response,
             ::google::protobuf::Closure* done);
     bool webService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
-
+*/
 private:
+		/*
     void checkLeader();
     void rebuildBlockMapCallback(const FileInfo &fileInfo);
     void logStatus();
@@ -149,7 +153,7 @@ private:
                            const std::string& file_name,
                            int64_t block_id);
     void setActualFileSize(FileInfo* file);
-
+*/
 private:
         baidu::common::ThreadPool *readThreadPool;
 		baidu::common::ThreadPool *workThreadPool;
@@ -158,14 +162,14 @@ private:
 
         ChunkServerManager *chunkserverManager;
 
-        BlockMappingManager *blockMappingManager;
+        BlockMapping *blockMappingManager;
 
         volatile bool readonly;
         volatile int recoverTimeout;
         RecoverMode recoverMode;
         int64_t startTime;
 
-        NameSpcae *_namespace;
+        NameSpace *_namespace;
         bool isLeader;
 
 };

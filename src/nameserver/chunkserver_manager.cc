@@ -14,6 +14,9 @@
 
 namespace zfs
 {
+	void add()
+	{}
+
 	int64_t Blocks::getReportId()
 	{
 		return _reportId;
@@ -69,7 +72,17 @@ namespace zfs
 
 	void ChunkServerManager::deadCheck()
 	{
-		
+		int32_t newTime = baidu::common::timer::now_time();
+
+		baidu::common::MutexLock lock(&_mu, "DeadCheck", 10);
+		auto it = _heartbeatList.begin();
+
+		while (it != _heartbeatList.end())
+		{
+
+		}
+
+
 	}
 
 

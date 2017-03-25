@@ -66,6 +66,7 @@ namespace zfs
 		ServerMap _chunkServics;
 		std::map<std::string, int32_t> _addressMap;
 		std::map<int32_t, Blocks*> _blockMap;
+		std::map<int32_t, std::set<ChunkServerInfo*> > _heartbeatList;
 
 		std::string _localhostName, _localZone;
 	};

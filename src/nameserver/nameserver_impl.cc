@@ -20,18 +20,24 @@
 
 #include "../proto/status_code.pb.h"
 
-DECLARE_bool(bfsWebKickEnable);
-DECLARE_int32(nameserverStartRecoverTimeout);
-DECLARE_int32(chunkserverMaxPendingBuffers);
-DECLARE_int32(nameserverReportThreadNum);
-DECLARE_int32(nameserverWorkThreadNum);
-DECLARE_int32(nameserverReadThreadNum);
-DECLARE_int32(nameserverHeartbeatThreadNum);
-//DECLARE_int32(blockmappingBucketNum);
-DECLARE_int32(hiRecoverTimeout);
-DECLARE_int32(loRecoverTimeout);
-DECLARE_int32(blockReportTimeout);
-DECLARE_bool(cleanRedundancy);
+DECLARE_bool(bfs_web_kick_enable);
+DECLARE_int32(nameserver_start_recover_timeout);
+DECLARE_int32(chunkserver_max_pending_buffers);
+DECLARE_int32(nameserver_report_thread_num);
+DECLARE_int32(nameserver_work_thread_num);
+DECLARE_int32(nameserver_read_thread_num);
+DECLARE_int32(nameserver_heartbeat_thread_num);
+DECLARE_int32(blockmapping_bucket_num);
+DECLARE_int32(hi_recover_timeout);
+DECLARE_int32(lo_recover_timeout);
+DECLARE_int32(block_report_timeout);
+DECLARE_bool(clean_redundancy);
+
+using baidu::common::LogLevel::INFO;
+using baidu::common::LogLevel::DEBUG;
+using baidu::common::LogLevel::ERROR;
+using baidu::common::LogLevel::FATAL;
+using baidu::common::LogLevel::WARNING;
 
 
 namespace zfs
@@ -47,19 +53,19 @@ baidu::common::Counter gListDir;
 baidu::common::Counter gReportBlocks;
 extern baidu::common::Counter gBlocksNum;
 
-NameServerImpl::NameServerImpl(): readonly(true), recoverTimeout(FLAGS_nameserverStartRecoverTimeout),
-                recoverMode(kStopRecover)
+NameServerImpl::NameServerImpl(): _readonly(true), _recoverTimeout(FLAGS_nameserver_start_recover_timeout),
+                _recoverMode(kStopRecover)
 {
-    blockMappingManager = new BlockMappingManager();
-    reportThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverReportThreadNum);
-    readThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverReadThreadNum);
-    workThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverWorkThreadNum);
-    heartbeatThreadPool = new baidu::common::ThreadPool(FLAGS_nameserverHeartbeatThreadNum);
-    chunkserverManager = new ChunkServerManager(workThreadPool, blockMappingManager);
+	_blockMapping = new BlockMapping();
+    _reportThreadPool = new baidu::common::ThreadPool(FLAGS_nameserver_report_thread_num);
+    _readThreadPool = new baidu::common::ThreadPool(FLAGS_nameserver_read_thread_num);
+    _workThreadPool = new baidu::common::ThreadPool(FLAGS_nameserver_work_thread_num);
+    _heartbeatThreadPool = new baidu::common::ThreadPool(FLAGS_nameserver_heartbeat_thread_num);
+    _chunkserverManager = new ChunkServerManager(_workThreadPool, _blockMapping);
     _namespace = new NameSpace();
     checkLeader();
-    startTime = baidu::common::timer::get_micros();
-    readThreadPool->AddTask(std::bind(&NameServerImpl::logStatus, this));
+    _startTime = baidu::common::timer::get_micros();
+    _readThreadPool->AddTask(std::bind(&NameServerImpl::logStatus, this));
 }
 
 void NameServerImpl::checkLeader()
@@ -68,43 +74,43 @@ void NameServerImpl::checkLeader()
     NameServerLog log;
     std::function<void (const FileInfo&) > task = std::bind(&NameServerImpl::rebuildBlockMapCallback, this, std::placeholders::_1);
     _namespace->activateDb(task, &log);
-    if(!logRemote(log, std::funciton<void (bool)>()))
+    if(!logRemote(log, std::function<void (bool)>()))
     {
         LOG(FATAL, "logremote namespace update fail");
     }
-    recoverTimeout = FLAGS_nameserverStartRecoverTimeout;
-    startTIme = baidu::common::timer::get_micros();
-    workThreadPool->DelayTask(1000, std::bind(&NameServerImpl::checkRecoverMode, this));
-    isLeader = true;
+    _recoverTimeout = FLAGS_nameserver_start_recover_timeout;
+    _startTime = baidu::common::timer::get_micros();
+    _workThreadPool->DelayTask(1000, std::bind(&NameServerImpl::checkRecoverMode, this));
+    _isLeader = true;
 }
 
 void NameServerImpl::rebuildBlockMapCallback(const FileInfo &fileInfo)
 {
-    for(int i = 0; i < fileInfo.blockSize(); i++)
+    for(int i = 0; i < fileInfo.blocks_size(); i++)
     {
         int64_t blockId = fileInfo.blocks(i);
         int64_t version = fileInfo.version();
-        blockMappingManager->rebuildBlock(blockId, fileInfo.replicas(), version, fileInfo.size());
+        _blockMapping->rebuildBlock(blockId, fileInfo.replicas(), version, fileInfo.size());
     }
 }
 
 void NameServerImpl::checkRecoverMode()
 {
-    int nowTime = (baidu::common::timer::get_micros() - startTime) / 1000000;
-    int recoverTimeoutTemp = recoverTimeout;
+    int nowTime = (baidu::common::timer::get_micros() - _startTime) / 1000000;
+    int recoverTimeoutTemp = _recoverTimeout;
     if(recoverTimeoutTemp == 0)
     {
         return;
     }
-    int newRecoverTimeout = FLAGS_nameserverStartRecoverTimeout - nowTime;
+    int newRecoverTimeout = FLAGS_nameserver_start_recover_timeout - nowTime;
     if(newRecoverTimeout <= 0)
     {
         LOG(INFO, "Now time %s", nowTime);
-        recoverMode = kRecoverAll;
+        _recoverMode = kRevocerAll;
         return;
     }
-    baidu::common::atomic_comp_swap(&recoverTimeout, newRecoverTimeout, recoverTimeout);
-    workThreadPool->DelayTask(1000, std::bind(&NameServerImpl::checkRecoverMode, this));
+    baidu::common::atomic_comp_swap(&_recoverTimeout, newRecoverTimeout, _recoverTimeout);
+    _workThreadPool->DelayTask(1000, std::bind(&NameServerImpl::checkRecoverMode, this));
 }
 
 void createFile(::google::protobuf::RpcController* controller,

@@ -17,6 +17,12 @@ DECLARE_bool(cleanRedundancy);
 DECLARE_int32(webRecoverListSize);
 DECLARE_int32(blockmappingThreadNum);
 
+using baidu::common::LogLevel::INFO;
+using baidu::common::LogLevel::DEBUG;
+using baidu::common::LogLevel::ERROR;
+using baidu::common::LogLevel::FATAL;
+using baidu::common::LogLevel::WARNING;
+
 namespace zfs
 {
 
@@ -31,44 +37,44 @@ NSBlock::NSBlock(int64_t blockId, int32_t replica, int64_t blockVersion, int64_t
 
 BlockMapping::BlockMapping()
 {
-    threadPool = new baidu::common::ThreadPool(FLAGS_blockmappingThreadNum);
+    _threadPool = new baidu::common::ThreadPool(FLAGS_blockmappingThreadNum);
 }
 
-//bool BlockMapping::getBlock(int64_t blockId, NSBlock *block)
-//{
-//    MutexLock lock(&mu, "BlockMapping::getBlock", 1000);
-//    NSBlock *nsblock = NULL;
-//    if(!getBlockPtr(blockId, &nsblock))
-//    {
-//        LOG(WARNING, "getBlockPtr can not find block #%ld", blockId);
-//        return false;
-//    }
-//    if(block)
-//    {
-//        *block = *nsblock;
-//    }
-//    return true;
-//}
-//
-//bool BlockMapping::getBlockPtr(int64_t blockId, NSBlock **block)
-//{
-//    mu.AssertHeld();
-//    NSBlockMap::iterator it = blockMap.find(blockId);
-//    if(it == blockMap.end())
-//    {
-//        return false;
-//    }
-//    if(block)
-//    {
-//        *block = it -> second;
-//    }
-//    return true;
-//}
-//
+bool BlockMapping::getBlock(int64_t blockId, NSBlock *block)
+{
+    baidu::MutexLock lock(&_mu, "BlockMapping::getBlock", 1000);
+    NSBlock *nsblock = NULL;
+    if(!getBlockPtr(blockId, &nsblock))
+    {
+        LOG(WARNING, "getBlockPtr can not find block #%ld", blockId);
+        return false;
+    }
+    if(block)
+    {
+        *block = *nsblock;
+    }
+    return true;
+}
+
+bool BlockMapping::getBlockPtr(int64_t blockId, NSBlock **block)
+{
+    _mu.AssertHeld();
+    NSBlockMap::iterator it = _blockMap.find(blockId);
+    if(it == _blockMap.end())
+    {
+        return false;
+    }
+    if(block)
+    {
+        *block = it -> second;
+    }
+    return true;
+}
+
 //bool BlockMapping::getLocatedBlock(int64_t blockId, std::vector<int32_t> *replica,
 //                                   int64_t *blockSize, RecoverStat *status)
 //{
-//    MutexLock lock(&mu);
+//    MutexLock lock(&_mu);
 //    NSBlock *nsblock = NULL;
 //    if(!getBlockPtr(blockId, &nsblock))
 //    {
@@ -95,7 +101,7 @@ BlockMapping::BlockMapping()
 //
 //bool BlockMapping::changeReplicaNum(int64_t blockId, int32_t replicaNum)
 //{
-//    MutexLock lock(&mu);
+//    MutexLock lock(&_mu);
 //    NSBlock *nsblock = NULL;
 //    if(!getBlockPtr(blockId, &nsblock))
 //    {
@@ -120,9 +126,9 @@ BlockMapping::BlockMapping()
 //    }
 //    LOG(DEBUG, "init block info: #%ld", blockId);
 //    gBlocksNum.Ink(); //原子自增1
-//    MutexLock lock(&mu);
+//    MutexLock lock(&_mu);
 //    common::timer::TimeChecker insertTime;
-//    std::pair<NSBlockMap::iterator, bool> ret = blockMap.insert(std::make_pair(blockId, nsblock));
+//    std::pair<NSBlockMap::iterator, bool> ret = _blockMap.insert(std::make_pair(blockId, nsblock));
 //    assert(ret.second == true);
 //    insertTime.Check(10*1000, "[AddNewBlock] InsertToBlockMapping");
 //}
@@ -134,7 +140,7 @@ BlockMapping::BlockMapping()
 //    if(size)//??
 //    {
 //        nsblock->recoverStatus = kLost;
-//        lostBlocks.insert(blockId);
+//        _lostBlocks.insert(blockId);
 //    }
 //    else
 //    {
@@ -151,17 +157,17 @@ BlockMapping::BlockMapping()
 //    }
 //
 //    gBlocksNum.Inc();
-//    MutexLock lock(&mu);
+//    MutexLock lock(&_mu);
 //    common::timer::TimeChecker insertTime;
-//    std::pair<NSBlockMap::iterator, bool> ret = blockMap.insert(std::make_pair(blockId, nsblock));
+//    std::pair<NSBlockMap::iterator, bool> ret = _blockMap.insert(std::make_pair(blockId, nsblock));
 //    assert(ret.second == true);
 //    insertTime.Check(10*1000, "[RebuildBlock] InsertToBlockMapping");
 //}
 //
 //bool BlockMapping::updateBlockInfo(int64_t blockId, int32_t serverId, int64_t blockSize,
-//                                   int64_t blockVersion);
+//                                   int64_t blockVersion)
 //{
-//    MutexLock lock(mu);
+//    MutexLock lock(&_mu);
 //    common::timer::TimeChecker updateBlockTimer;
 //    NSBlock *nsblock = NULL;
 //    if(!getBlockPtr(blockId, &nsblock))
@@ -188,7 +194,7 @@ BlockMapping::BlockMapping()
 //                bool ret = updateWritingBlock(nsblock, serverId, blockSize, blockVersion);
 //                if(nsblock->recoverStatus == kLost)
 //                {
-//                    lostBlocks.erase(blockId);
+//                    _lostBlocks.erase(blockId);
 //                    if(nsblock->version < 0)
 //                    {
 //                        nsblock->recoverStatus = kBlockWriting;
@@ -213,4 +219,203 @@ BlockMapping::BlockMapping()
 //    }
 //}
 
+	void BlockMapping::dealWithDeadNode(int32_t csId, const std::set<int64_t> &blocks)
+	{
+		for(auto it = blocks.begin(); it != blocks.end(); ++it)
+		{
+			baidu::MutexLock lock(&_mu);
+			dealWithDeadBlockInternal(csId, *it);
+		}
+		baidu::MutexLock lock(&_mu);
+		NSBlock *block = NULL;
+		for(auto it = _hiRecoverCheck[csId].begin(); it != _hiRecoverCheck[csId].end(); it++)
+		{
+			if(!getBlockPtr(*it, &block))
+			{
+				LOG(DEBUG, "deal with dead node for C%d cannot find block #%ld", csId, *it);
+			}
+			else
+			{
+				block->recoverStatus = kNotInRecover;
+			}
+		}
+		_hiRecoverCheck.erase(csId);
+
+		for(auto it = _loRecoverCheck[csId].begin(); it != _loRecoverCheck[csId].end(); it++)
+		{
+			if(!getBlockPtr(*it, &block))
+			{
+				LOG(DEBUG, "deal with dead node for C%d cannot find block #%ld", csId, *it);
+			}
+			else
+			{
+				block->recoverStatus = kNotInRecover;
+			}
+		}
+		_loRecoverCheck.erase(csId);
+	}
+
+	void BlockMapping::dealWithDeadBlockInternal(int32_t csId, int64_t blockId)
+	{
+		_mu.AssertHeld();
+		NSBlock *block = NULL;
+		if(!getBlockPtr(blockId, &block))
+		{
+			LOG(DEBUG, "dealWithDeadBlockInternal for C%d cannot find block #%ld", csId, blockId);
+			return;
+		}
+
+		std::set<int32_t> &incompleteReplica = block->incompleteReplica;
+		std::set<int32_t> &replica = block->replica;
+
+		if(incompleteReplica.erase(csId))
+		{
+			if(block->recoverStatus == kIncomplete)
+			{
+				removeFromIncomplete(blockId, csId);
+			}
+		}
+		else
+		{
+			if(!replica.erase(csId))
+			{
+				LOG(INFO, "Dead replica C%d #%ld not in blockMapping, ignore it R%lu IR%lu",
+					csId, blockId, replica.size(), incompleteReplica.size());
+				return;
+			}
+		}
+
+		if(block->recoverStatus == kIncomplete)
+		{
+			LOG(INFO, "Incomplete block C%d #%ld dead R%lu",
+				csId, blockId, replica.size());
+			if(incompleteReplica.empty())
+			{
+				setState(block, kNotInRecover);
+			}
+		}
+		else if(block->recoverStatus == kBlockWriting)
+		{
+			LOG(INFO, "Writing block C%d #%ld dead R%lu IR%lu",
+			    csId, blockId, replica.size(), incompleteReplica.size());
+			if(incompleteReplica.size() > 0)
+			{
+				setState(block, kIncomplete);
+				insertToIncomplete(blockId, incompleteReplica);
+			}
+			else
+			{
+				setState(block, kNotInRecover);
+			}
+		}
+
+		LOG(DEBUG, "Dead replica at C%d add #%ld R%lu try recover", csId, blockId, replica.size());
+		tryRecover(block);
+	}
+
+	void BlockMapping::removeFromIncomplete(int64_t blockId, int32_t csId)
+	{
+		_mu.AssertHeld();
+		bool error = false;
+		auto it = _incomplete.find(csId);
+		if(it != _incomplete.end())
+		{
+			std::set<int64_t> &incompleteSet = it -> second;
+			if(!incompleteSet.erase(blockId)) error = true;
+			if(incompleteSet.empty()) _incomplete.erase(it);
+		}
+		else
+		{
+			error = true;
+		}
+
+		if(error)
+		{
+			LOG(WARNING, "RemoveFromIncomplete not find C%d #%ld", csId, blockId);
+			abort();
+		}
+		else
+		{
+			LOG(INFO, "RemoveFromIncomplete C%d #%ld ", csId, blockId);
+		}
+	}
+
+	void BlockMapping::setState(NSBlock *block, RecoverStat stat)
+	{
+		_mu.AssertHeld();
+		LOG(INFO, "setState #ld %s -> %", block->id, RecoverStat_Name(block->recoverStatus).c_str(),
+			RecoverStat_Name(stat).c_str());
+		block->recoverStatus = stat;
+	}
+
+	void BlockMapping::insertToIncomplete(int64_t blockId, const std::set<int32_t> &incompleteReplica)
+	{
+		_mu.AssertHeld();
+		auto it = incompleteReplica.begin();
+		for(; it != incompleteReplica.end(); it++)
+		{
+			_incomplete[*it].insert(blockId);
+			LOG(INFO, "Insert C%d #%ld to _incomplete", *it, blockId);
+		}
+	}
+
+	void BlockMapping::tryRecover(NSBlock *block)
+	{
+		_mu.AssertHeld();
+		if(block->recoverStatus == kCheck || block->recoverStatus == kIncomplete ||
+			block->recoverStatus == kBlockWriting)
+		{
+			return;
+		}
+
+		int64_t blockId = block->id;
+		if(block->replica.size() < block->expectReplicaNum)
+		{
+			if(block->replica.size() == 0)
+			{
+				if(block->blockSize && block->recoverStatus != kLost)
+				{
+					LOG(INFO, "[TryRecover] lost block #%ld ", blockId);
+					_lostBlocks.insert(blockId);
+					setState(block, kLost);
+
+					_loPriRecover.erase(blockId);
+					_hiPriRecover.erase(blockId);
+				}
+				else if(block->blockSize == 0 && block->recoverStatus == kLost)
+				{
+					_lostBlocks.erase(blockId);
+					LOG(WARNING, "[TryRecover] empty block #%ld remove from lost", blockId);
+				}
+			}
+			else if(block->replica.size() == 1 && block->recoverStatus != kHiRecover)
+			{
+				_hiPriRecover.insert(blockId);
+				LOG(INFO, "[TryRecover] need more recover: #%ld %s->kHiRecover", blockId, RecoverStat_Name(block->recoverStatus).c_str());
+				setState(block, kHiRecover);
+				_lostBlocks.erase(blockId);
+				_loPriRecover.erase(blockId);
+			}
+			else if(block->replica.size() > 1 && block->recoverStatus != kLoRecover)
+			{
+				_loPriRecover.insert(blockId);
+				LOG(INFO, "[TryRecover] need more recover: #%ld %s->kLoRecover",
+				    blockId, RecoverStat_Name(block->recoverStatus).c_str());
+				setState(block, kLoRecover);
+				_lostBlocks.erase(blockId);
+				_hiPriRecover.erase(blockId);
+			}
+			return;
+		}
+
+		if(block->recoverStatus != kNotInRecover)
+		{
+			LOG(INFO, "Block #%ld V%ld %ld R%lu back to normal from %s",
+			    blockId, block->version, block->blockSize, block->replica.size(), RecoverStat_Name(block->recoverStatus).c_str());
+			setState(block, kNotInRecover);
+			_lostBlocks.erase(blockId);
+			_hiPriRecover.erase(blockId);
+			_lostBlocks.erase(blockId);
+		}
+	}
 }

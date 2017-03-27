@@ -61,17 +61,17 @@ class BlockMapping
 {
 public:
     BlockMapping();
-//    bool getBlock(int64_t blockId, NSBlock *block);
+    bool getBlock(int64_t blockId, NSBlock *block);
 //    bool getLocatedBlock(int64_t blockId, std::vector<int32_t> *replica, int64_t *blockSize,
 //                         RecoverStat *status);
 //    bool changeReplicaNum(int64_t blockId, int32_t replicaNum);
 //    void addBlock(int64_t blockId, int32_t replica, const std::vector<int32_t> &initReplicas);
-//    void rebuildBlock(int64_t blockId, int32_t replica, int64_t version, int64_t size);
+    void rebuildBlock(int64_t blockId, int32_t replica, int64_t version, int64_t size);
 //    bool updateBlockInfo(int64_t blockId, int32_t serverId, int64_t blockSize,
 //                         int64_t blockVersion);
 //    void removeBlocksForFile(const FileInfo &fileInfo, std::map<int64_t, std::set<int32_t> > *blocks);
 //    void removeBlock(int64_t blockId, std::map<int64_t, std::set<int32_t> > *blocks);
-//    void dealWithDeadNode(int32_t csId, const std::set<int64_t> &blocks);
+    void dealWithDeadNode(int32_t csId, const std::set<int64_t> &blocks);
 //    void dealWithDeadBlock(int32_t csId, int64_t blockId);
 //    StatusCode checkBlockVersion(int64_t blockId, int64_t version);
 //    void pickRecoverBlocks(int32_t csId, int32_t blockNum,
@@ -84,16 +84,16 @@ public:
 //    int32_t getCheckNum();
 //    void markIncomplete(int64_t blockId);
 private:
-//    void dealWithDeadBlockInternal(int32_t csId, int64_t blockId);
+    void dealWithDeadBlockInternal(int32_t csId, int64_t blockId);
 //    void listCheckList(const CheckList& checkList, std::map<int32_t, std::set<int64_t> > *result);
 //    void listRecoverList(const std::set<int64_t> &recoverSet, std::set<int64_t> *result);
-//    void tryRecover(NSBlock *block);
+    void tryRecover(NSBlock *block);
 //    bool removeFromRecoverCheckList(int32_t csId, int64_t blockId);
 //    void checkRecover(int32_t csId, int64_t blockId);
-//    void insertToIncomplete(int64_t blockId, const std::set<int32_t> &incReplica);
-//    void removeFromIncomplete(int64_t blockId, int32_t csId);
-//    bool getBlockPtr(int64_t blockId, NSBlock **block);
-//    void setState(NSBlock *block, RecoverStat stat);
+    void insertToIncomplete(int64_t blockId, const std::set<int32_t> &incompleteReplica);
+    void removeFromIncomplete(int64_t blockId, int32_t csId);
+    bool getBlockPtr(int64_t blockId, NSBlock **block);
+    void setState(NSBlock *block, RecoverStat stat);
 //    bool setStateIf(NSBlock *block, RecoverStat from, RecoverStat to);
 //
 //    bool updateWritingBlock(NSBlock* nsblock, int32_t csId, int64_t blockSize,
@@ -103,18 +103,18 @@ private:
 //    bool updateIncompleteBlock(NSBlock* nsblock,int32_t csId, int64_t blockSize,
 //                               int64_t blockVersion);
 private:
-    baidu::common::Mutex mu;
-    baidu::common::ThreadPool* threadPool;
+    baidu::common::Mutex _mu;
+    baidu::common::ThreadPool* _threadPool;
     typedef std::map<int64_t, NSBlock*> NSBlockMap;
     typedef std::map<int32_t, std::set<int64_t> > CheckList;
-    NSBlockMap blockMap;
+    NSBlockMap _blockMap; //blockId和blockInfo的映射
 
-    CheckList hiRecoverCheck;
-    CheckList loRecoverCheck;
-    CheckList incomplete;
-    std::set<int64_t> loPriRecover;
-    std::set<int64_t> hiPriRecover;
-    std::set<int64_t> lostBlocks;                               
+    CheckList _hiRecoverCheck; //ChunkServerId和一组blockId的映射
+    CheckList _loRecoverCheck;
+    CheckList _incomplete;
+    std::set<int64_t> _loPriRecover; //低优先级
+    std::set<int64_t> _hiPriRecover; //高优先级
+    std::set<int64_t> _lostBlocks; //全部丢失
 };
 
 

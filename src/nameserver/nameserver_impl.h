@@ -8,6 +8,7 @@
 
 #include "namespace.h"
 #include "block_mapping.h"
+#include "chunkserver_manager.h"
 
 #include "../proto/nameserver.pb.h"
 
@@ -127,50 +128,49 @@ public:
     bool webService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
 */
 private:
-		/*
+
     void checkLeader();
     void rebuildBlockMapCallback(const FileInfo &fileInfo);
     void logStatus();
     void checkRecoverMode();
-    void leaveReadOnly();
-    void listRecover(sofa::pbrpc::HTTPResponse* response);
+//    void leaveReadOnly();
+//    void listRecover(sofa::pbrpc::HTTPResponse* response);
     bool logRemote(const NameServerLog& log, std::function<void (bool)> callback);
-    void syncLogCallback(::google::protobuf::RpcController* controller,
-                         const ::google::protobuf::Message* request,
-                         ::google::protobuf::Message* response,
-                         ::google::protobuf::Closure* done,
-                         std::vector<FileInfo>* removed,
-                         bool ret);
-    void transToString(const std::map<int32_t, std::set<int64_t> >& chk_set,
-                       std::string* output);
-    void transToString(const std::set<int64_t>& block_set, std::string* output);
-    void callMethod(const ::google::protobuf::MethodDescriptor* method,
-                    ::google::protobuf::RpcController* controller,
-                    const ::google::protobuf::Message* request,
-                    ::google::protobuf::Message* response,
-                    ::google::protobuf::Closure* done);
-    bool checkFileHasBlock(const FileInfo& file_info,
-                           const std::string& file_name,
-                           int64_t block_id);
-    void setActualFileSize(FileInfo* file);
-*/
+//    void syncLogCallback(::google::protobuf::RpcController* controller,
+//                         const ::google::protobuf::Message* request,
+//                         ::google::protobuf::Message* response,
+//                         ::google::protobuf::Closure* done,
+//                         std::vector<FileInfo>* removed,
+//                         bool ret);
+//    void transToString(const std::map<int32_t, std::set<int64_t> >& chk_set,
+//                       std::string* output);
+//    void transToString(const std::set<int64_t>& block_set, std::string* output);
+//    void callMethod(const ::google::protobuf::MethodDescriptor* method,
+//                    ::google::protobuf::RpcController* controller,
+//                    const ::google::protobuf::Message* request,
+//                    ::google::protobuf::Message* response,
+//                    ::google::protobuf::Closure* done);
+//    bool checkFileHasBlock(const FileInfo& file_info,
+//                           const std::string& file_name,
+//                           int64_t block_id);
+//    void setActualFileSize(FileInfo* file);
+
 private:
-        baidu::common::ThreadPool *readThreadPool;
-		baidu::common::ThreadPool *workThreadPool;
-        baidu::common::ThreadPool *reportThreadPool;
-        baidu::common::ThreadPool *heartbeatThreadPool;
+        baidu::common::ThreadPool *_readThreadPool;
+		baidu::common::ThreadPool *_workThreadPool;
+        baidu::common::ThreadPool *_reportThreadPool;
+        baidu::common::ThreadPool *_heartbeatThreadPool;
 
-        ChunkServerManager *chunkserverManager;
+        ChunkServerManager *_chunkserverManager;
+        BlockMapping *_blockMapping;
 
-        BlockMapping *blockMappingManager;
-
-        volatile bool readonly;
-        volatile int recoverTimeout;
-        RecoverMode recoverMode;
-        int64_t startTime;
+        volatile bool _readonly;
+        volatile int _recoverTimeout;
+        RecoverMode _recoverMode;
+        int64_t _startTime;
 
         NameSpace *_namespace;
-        bool isLeader;
+        bool _isLeader;
 
 };
 }

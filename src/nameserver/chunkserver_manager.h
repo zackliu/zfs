@@ -50,6 +50,7 @@ namespace zfs
 		};
 
 		ChunkServerManager(baidu::common::ThreadPool *threadPool, BlockMapping *blockMapping);
+		void cleanChunkServer(ChunkServerInfo *cs, const std::string reason);
 
 	private:
 		void deadCheck();
@@ -62,13 +63,16 @@ namespace zfs
 		baidu::common::Mutex _mu;
 		int32_t _chunkServerNum;
 		int32_t _nextChunkServerId;
-		typedef std::map<int32_t , ChunkServerInfo*> ServerMap;
-		ServerMap _chunkServics;
-		std::map<std::string, int32_t> _addressMap;
-		std::map<int32_t, Blocks*> _blockMap;
-		std::map<int32_t, std::set<ChunkServerInfo*> > _heartbeatList;
+		typedef std::map<int32_t , ChunkServerInfo*> ServerMap; //id和一个ChunkServer对应
+		ServerMap _chunkServers;
+		std::map<std::string, int32_t> _addressMap; //socket和ChunkServerid对应
+		std::map<int32_t, Blocks*> _blockMap; //ChunkServerid和所拥有的一组blocks对应
+		std::map<int32_t, std::set<ChunkServerInfo*> > _heartbeatList; //first:heartbeat时间 second:Chunk信息
+
+		std::vector<std::string> _chunkServersToOffline;
 
 		std::string _localhostName, _localZone;
+		Params _params;
 	};
 }
 

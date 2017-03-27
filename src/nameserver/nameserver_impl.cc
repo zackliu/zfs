@@ -147,10 +147,10 @@ namespace zfs
 		NameServerLog log;
 
 		std::vector<int64_t> blocksToRemove;
-		StatusCode status = _namespace->createFile(path, flags, mode, replicaNum, blocksToRemove, &log);
+		StatusCode status = _namespace->createFile(path, flags, mode, replicaNum, &blocksToRemove, &log);
 		for(int i = 0; i < blocksToRemove.size(); i++)
 		{
-			_blockMapping->removeBlock(blocksToRemove[i]);
+			_blockMapping->removeBlock(blocksToRemove[i], NULL);
 		}
 		response->set_status(status);
 		sofa::pbrpc::RpcController *ctl = reinterpret_cast<sofa::pbrpc::RpcController*>(controller);

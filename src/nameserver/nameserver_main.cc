@@ -11,7 +11,7 @@
 #include "../util/version.h"
 
 DECLARE_string(flagfile); //从文件读入参数
-DECLARE_string(nameserverNode);
+DECLARE_string(nameserver_node);
 
 int main(int argc, char *argv[])
 {
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	}
 
 	//start
-	std::string listenAddr = std::string("127.0.0.1:") + FLAGS_nameserverNode;
+	std::string listenAddr = std::string("127.0.0.1:") + FLAGS_nameserver_node;
 	if(!rpcServer.Start(listenAddr))
 	{
 		return 1;

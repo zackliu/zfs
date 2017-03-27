@@ -418,4 +418,46 @@ bool BlockMapping::getBlockPtr(int64_t blockId, NSBlock **block)
 			_lostBlocks.erase(blockId);
 		}
 	}
+
+	void BlockMapping::removeBlock(int64_t blockId, std::map<int64_t, std::set<int32_t> > *blocks)
+	{
+		baidu::MutexLock lock(&_mu);
+		NSBlock *block = NULL;
+		if(!getBlockPtr(blockId, &block))
+		{
+			LOG(WARNING, "Remove block #%ld is not found", blockId);
+			return ;
+		}
+
+		if(blocks)
+		{
+			std::set<int32_t> &blockCs = (*blocks)[blockId];
+			blockCs.insert(block->incompleteReplica.begin(), block->incompleteReplica.end());
+			blockCs.insert(block->replica.begin(), block->replica.end());
+		}
+
+		if(block->recoverStatus == kIncomplete)
+		{
+			for(auto it = block->incompleteReplica.begin(); it != block->incompleteReplica.end(); it++)
+			{
+				removeFromIncomplete(blockId, *it);
+			}
+		}
+		else if(block->recoverStatus == kLost)
+		{
+			_lostBlocks.erase(blockId);
+		}
+		else if(block->recoverStatus == kHiRecover)
+		{
+			_hiPriRecover.erase(blockId);
+		}
+		else if(block->recoverStatus == kLoRecover)
+		{
+			_loPriRecover.erase(blockId);
+		}
+
+		delete block;
+		_blockMap.erase(blockId);
+		gBlocksNum.Dec();
+	}
 }

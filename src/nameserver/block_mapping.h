@@ -69,8 +69,8 @@ public:
     void rebuildBlock(int64_t blockId, int32_t replica, int64_t version, int64_t size);
 //    bool updateBlockInfo(int64_t blockId, int32_t serverId, int64_t blockSize,
 //                         int64_t blockVersion);
-//    void removeBlocksForFile(const FileInfo &fileInfo, std::map<int64_t, std::set<int32_t> > *blocks);
-//    void removeBlock(int64_t blockId, std::map<int64_t, std::set<int32_t> > *blocks);
+    void removeBlocksForFile(const FileInfo &fileInfo, std::map<int64_t, std::set<int32_t> > *blocks);
+    void removeBlock(int64_t blockId, std::map<int64_t, std::set<int32_t> > *blocks);
     void dealWithDeadNode(int32_t csId, const std::set<int64_t> &blocks);
 //    void dealWithDeadBlock(int32_t csId, int64_t blockId);
 //    StatusCode checkBlockVersion(int64_t blockId, int64_t version);

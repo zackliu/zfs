@@ -64,7 +64,7 @@ namespace zfs
 	public:
 		File() {}
 		virtual ~File() {}
-		virtual  int32_t pread(char *buf, int32_t readSize, int64_t offset, bool reada = false) = 0;
+		virtual int32_t pread(char *buf, int32_t readSize, int64_t offset, bool reada = false) = 0;
 		virtual int64_t seek(int64_t offset, int32_t whence) = 0;
 		virtual int32_t read(char* buf, int32_t readSize) = 0;
 		virtual int32_t write(const char* buf, int32_t writeSize) = 0;
@@ -87,10 +87,22 @@ namespace zfs
 
 	class FileSystem
 	{
+	public:
 		FileSystem() {}
 		virtual ~FileSystem() {}
 
-		static bool openFileSystem(const char *nameserver, FileSystem **fs, FSOptions &fsOptions);
+		static bool openFileSystem(const char *nameserver, FileSystem **fs, const FSOptions&);
+		virtual int32_t openFile(const char *path, int32_t flags, File **file,
+								 const ReadOptions &readOptions) = 0;
+		virtual int32_t openFile(const char *path, int32_t flags, File **file,
+		                         const WriteOptions &writeOptions) = 0;
+		virtual int32_t openFile(const char *path, int32_t flags, int32_t mode, File **file,
+		                         const WriteOptions &writeOptions) = 0;
+		virtual int32_t closeFile(File &file) = 0;
+
+	private:
+		FileSystem(const FileSystem&);
+		void operator=(const FileSystem&);
 	};
 
 }

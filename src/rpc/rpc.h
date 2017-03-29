@@ -30,7 +30,7 @@ public:
     template <class T>
     bool getStub(const std::string server, T **stub)
     {
-        MutexLock lock(&hostMapLock)  //加锁，到lock销毁时解锁
+        baidu::MutexLock lock(&hostMapLock)  //加锁，到lock销毁时解锁
         sofa::pbrpc::RpcChannel *channel = NULL;
         HostMap::iterator it = hostMap.find(server);
         if(it == hostMap.end())
@@ -38,7 +38,7 @@ public:
             //没有这种server的channel
             sofa::pbrpc::RpcChannelOptions channelOptions;
             channel = new sofa::pbrpc::RpcChannel(rpcClient, server, channelOptions);
-            hostMap[sever] = channel;
+            hostMap[server] = channel;
         }
         else
         {
@@ -118,7 +118,7 @@ private:
     sofa::pbrpc::RpcClient *rpcClient;
     typedef std::map<std::string, sofa::pbrpc::RpcChannel*> HostMap;
     HostMap hostMap;
-    Mutex hostMapLock;
+    baidu::Mutex hostMapLock;
 };
 
 }

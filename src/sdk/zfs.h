@@ -98,7 +98,7 @@ namespace zfs
 		                         const WriteOptions &writeOptions) = 0;
 		virtual int32_t openFile(const char *path, int32_t flags, int32_t mode, File **file,
 		                         const WriteOptions &writeOptions) = 0;
-		virtual int32_t closeFile(File &file) = 0;
+		virtual int32_t closeFile(File *file) = 0;
 
 	private:
 		FileSystem(const FileSystem&);

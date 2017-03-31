@@ -18,6 +18,7 @@ namespace zfs
 	class FileSystemImpl : public FileSystem
 	{
 	public:
+		friend  class FileImpl;
 		FileSystemImpl();
 		~FileSystemImpl();
 

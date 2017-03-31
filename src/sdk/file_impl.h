@@ -76,13 +76,17 @@ namespace zfs
 	class FileImpl : public File, public std::enable_shared_from_this<FileImpl>
 	{
 	public:
+		friend  class FileSystemImpl;
 		FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name,
 				 int32_t flags, const WriteOptions &writeOptions);
 		FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name,
 		         int32_t flags, const ReadOptions &readOptions);
 		~FileImpl();
+
+		int32_t pread(char *buf, int32_t readSize, int64_t offset, bool readAhead = false);
 		int32_t read(char* buf, int32_t readSize);
 		int32_t write(const char* buf, int32_t writeSize);
+		int32_t close();
 
 
 		struct WriteBufferCmp
@@ -128,6 +132,9 @@ namespace zfs
 		bool _closed;
 		bool _synced;
 		baidu::Mutex _mu;
+		baidu::CondVar _syncSignal;
+		bool _bgError;
+		std::map<std::string, bool> _csError;
 
 
 	};

@@ -10,6 +10,7 @@
 #include <common/logging.h>
 
 #include "../proto/status_code.pb.h"
+#include "fs_impl.h"
 
 
 DECLARE_int32(sdk_file_reada_len);
@@ -105,5 +106,51 @@ namespace zfs
 	}
 
 
+	FileImpl::FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name, int32_t flags,
+	                   const WriteOptions &writeOptions)
+		:_fs(fs), _rpcClient(rpcClient), _name(name), _openFlag(flags), _writeOffset(0),
+	     _blockForWrite(NULL), _writeBuffer(NULL), _lastSeq(-1), _backWriting(0),
+	     _writeOptions(writeOptions), _chunkServer(NULL), _lastChunkServerIndex(-1),
+	     _readOffset(0), _readBuffer(NULL), _readBufferLen(0), _readBaseOffset(0),
+	     _sequentialReadRatio(0), _lastReadOffset(-1), _readOptions(ReadOptions()),
+	     _closed(false), _synced(false), _syncSignal(&_mu), _bgError(false)
+	{
+		_threadPool = fs->_threadPool;
+	}
+
+	FileImpl::FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name, int32_t flags,
+	                   const ReadOptions &readOptions)
+			:_fs(fs), _rpcClient(rpcClient), _name(name), _openFlag(flags), _writeOffset(0),
+			 _blockForWrite(NULL), _writeBuffer(NULL), _lastSeq(-1), _backWriting(0),
+			 _writeOptions(WriteOptions()), _chunkServer(NULL), _lastChunkServerIndex(-1),
+			 _readOffset(0), _readBuffer(NULL), _readBufferLen(0), _readBaseOffset(0),
+			 _sequentialReadRatio(0), _lastReadOffset(-1), _readOptions(readOptions),
+			 _closed(false), _synced(false), _syncSignal(&_mu), _bgError(false)
+	{
+		_threadPool = fs->_threadPool;
+	}
+
+	FileImpl::~FileImpl() //TODO
+	{
+
+	}
+
+	int32_t FileImpl::pread(char *buf, int32_t readSize, int64_t offset, bool readAhead)
+	{
+
+	}
+
+
+
+	int32_t FileImpl::read(char *buf, int32_t readSize)
+	{
+		baidu::MutexLock lock(&_readMu);
+		int32_t res = pread(buf, readSize, _readOffset, true);
+		if(res >= 0)
+		{
+			_readOffset += res;
+		}
+		return res;
+	}
 
 }

@@ -38,6 +38,72 @@ namespace zfs
 
 	int WriteBuffer::append(const char *buf, int len)
 	{
-		
+		assert(_dataSize + len <= _bufSize);
+		memcpy(_buf, buf, len);
+		_dataSize+=len;
+		return _dataSize;
 	}
+
+	const char* WriteBuffer::data()
+	{
+		return _buf;
+	}
+
+	int WriteBuffer::size() const
+	{
+		return _dataSize;
+	}
+
+	int WriteBuffer::sequence() const
+	{
+		return _seqId;
+	}
+
+	void WriteBuffer::clear()
+	{
+		_dataSize = 0;
+	}
+
+	void WriteBuffer::setLast()
+	{
+		_isLast = true;
+	}
+
+	bool WriteBuffer::isLast() const
+	{
+		return _isLast;
+	}
+
+	int64_t WriteBuffer::offset() const
+	{
+		return _offset;
+	}
+
+	int64_t WriteBuffer::blockId() const
+	{
+		return _blockId;
+	}
+
+	void WriteBuffer::addRefBy(int counter)
+	{
+		baidu::common::atomic_add(&_refs, counter);
+	}
+
+	void WriteBuffer::addRef()
+	{
+		baidu::common::atomic_inc(&_refs);
+		assert(_refs > 0);
+	}
+
+	void WriteBuffer::decRef()
+	{
+		if(baidu::common::atomic_add(&_refs, -1) == 1)
+		{
+			assert(_refs == 0);
+			delete this;
+		}
+	}
+
+
+
 }

@@ -70,16 +70,16 @@ namespace zfs
 
 
 	class FileSystemImpl;
-	class RpcClient;
+	class Rpc;
 
 
 	class FileImpl : public File, public std::enable_shared_from_this<FileImpl>
 	{
 	public:
 		friend  class FileSystemImpl;
-		FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name,
+		FileImpl(FileSystemImpl *fs, Rpc *rpcClient, const std::string name,
 				 int32_t flags, const WriteOptions &writeOptions);
-		FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name,
+		FileImpl(FileSystemImpl *fs, Rpc *rpcClient, const std::string name,
 		         int32_t flags, const ReadOptions &readOptions);
 		~FileImpl();
 
@@ -88,6 +88,8 @@ namespace zfs
 		int32_t write(const char* buf, int32_t writeSize);
 		void startWrite(); //add buffer
 		int32_t close();
+		static void onWriteCommit(int32_t, int32_t);
+		static void backgroundWrite(std::weak_ptr<FileImpl> weakPtrFileImpl);
 
 
 		struct WriteBufferCmp
@@ -100,10 +102,11 @@ namespace zfs
 
 	private:
 		int32_t addBlock();
+		bool isChainWrite();
 
 	private:
 		FileSystemImpl *_fs;
-		RpcClient *_rpcClient;
+		Rpc *_rpcClient;
 		baidu::ThreadPool *_threadPool;
 		std::string _name;
 		int32_t _openFlag;

@@ -277,7 +277,29 @@ namespace zfs
 		}
 
 		return true;
+	}
 
+	bool ChunkServerManager::getChunkServerPtr(int32_t csId, ChunkServerInfo **info)
+	{
+		_mu.AssertHeld();
+		auto it = _chunkServers.find(csId);
+		if(it == _chunkServers.end()) return false;
+		if(info) *info = it->second;
+		return true;
+	}
 
+	void ChunkServerManager::randomSelect(std::vector<std::pair<double, ChunkServerInfo *> > *loads, int num)
+	{
+		std::sort(loads->begin(), loads->end());
+
+		int scope = loads->size() - (loads->size() % num);
+		for (int32_t i = num; i < scope; i++) {
+			int round =  i / num + 1;
+			double base_load = (*loads)[i % num].first;
+			int ratio = static_cast<int>((base_load + 0.0001) * 100.0 / ((*loads)[i].first + 0.0001));
+			if (rand() % 100 < (ratio / round)) {
+				std::swap((*loads)[i % num], (*loads)[i]);
+			}
+		}
 	}
 }

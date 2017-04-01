@@ -115,7 +115,7 @@ namespace zfs
 	}
 
 
-	FileImpl::FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name, int32_t flags,
+	FileImpl::FileImpl(FileSystemImpl *fs, Rpc *rpcClient, const std::string name, int32_t flags,
 	                   const WriteOptions &writeOptions)
 		:_fs(fs), _rpcClient(rpcClient), _name(name), _openFlag(flags), _writeOffset(0),
 	     _blockForWrite(NULL), _writeBuffer(NULL), _lastSeq(-1), _backWriting(0),
@@ -127,7 +127,7 @@ namespace zfs
 		_threadPool = fs->_threadPool;
 	}
 
-	FileImpl::FileImpl(FileSystemImpl *fs, RpcClient *rpcClient, const std::string name, int32_t flags,
+	FileImpl::FileImpl(FileSystemImpl *fs, Rpc *rpcClient, const std::string name, int32_t flags,
 	                   const ReadOptions &readOptions)
 			:_fs(fs), _rpcClient(rpcClient), _name(name), _openFlag(flags), _writeOffset(0),
 			 _blockForWrite(NULL), _writeBuffer(NULL), _lastSeq(-1), _backWriting(0),
@@ -185,7 +185,7 @@ namespace zfs
 
 		if(_openFlag & O_WRONLY)
 		{
-			baidu::MutexLock loc(&_mu, "write addblock", 1000);
+			baidu::MutexLock lock(&_mu, "write addblock", 1000);
 			if(_chunkServers.empty())
 			{
 				int res = 0;
@@ -225,7 +225,7 @@ namespace zfs
 				_writeBuffer -> append(buf+w, n);
 			}
 
-			if(_writeBuffer -> available() == 0)
+			if(_writeBuffer -> available() == 0) //将已有的buffer内容写入
 			{
 				startWrite();
 			}
@@ -249,12 +249,75 @@ namespace zfs
 
 		if(!result || !response.has_block())
 		{
-			LOG(WARNING, "Nameserver AddBlock failed: %s", _name.c_str());
+			LOG(WARNING, "NameServer AddBlock failed: %s", _name.c_str());
 			if(!result) return TIMEOUT;
 			else return -1;
 		}
 
 		_blockForWrite = new LocatedBlock(response.block());
+		bool chanWrite = isChainWrite();
+		int chunkServerSize = chanWrite ? 1 : _blockForWrite->chains_size();
+		for(int i = 0; i < chunkServerSize; i++)
+		{
+			const std::string &address = _blockForWrite->chains(i).address();
+			_rpcClient->getStub(address, &_chunkServers[address]);
+			_writeWindows[address] = new baidu::common::SlidingWindow<int>(100, std::bind(&FileImpl::onWriteCommit, std::placeholders::_1, std::placeholders::_2));
+			_csError[address] = false;
+
+			WriteBlockRequest writeBlockRequest;
+			WriteBlockResponse writeBlockResponse;
+			int64_t seq = baidu::common::timer::get_micros();
+			writeBlockRequest.set_sequence_id(seq);
+			writeBlockRequest.set_block_id(_blockForWrite->blockid());
+			writeBlockRequest.set_databuf("", 0);
+			writeBlockRequest.set_offset(0);
+			writeBlockRequest.set_is_last(false);
+			writeBlockRequest.set_packet_seq(0);
+
+			if(chanWrite)
+			{
+				for(int i = 0; i < _blockForWrite->chains_size(); i++)
+				{
+					writeBlockRequest.add_chunkservers(_blockForWrite->chains(i).address());
+				}
+			}
+
+			bool result = _rpcClient->sendRequest(_chunkServers[address], &ChunkServer_Stub::writeBlock, &writeBlockRequest, &writeBlockResponse, 25, 1);
+			if(!result || writeBlockResponse.status() != 0)
+			{
+				LOG(WARNING, "Chunkserver AddBlock failed: %s", _name.c_str());
+				for(int j = 0; j <= i; j ++)
+				{
+					delete _writeWindows[_blockForWrite->chains(j).address()];
+					delete _chunkServers[_blockForWrite->chains(j).address()];
+				}
+				_writeWindows.clear();
+				_chunkServers.clear();
+				delete _blockForWrite;
+				if(!result)
+				{
+					return TIMEOUT;
+				}
+			}
+			_writeWindows[address]->Add(0, 0);
+		}
+		_lastSeq = 0;
+		return OK;
+	}
+
+	void FileImpl::startWrite()
+	{
+		baidu::common::timer::AutoTimer at(5, "StartWrite", _name.c_str());
+
+		_mu.AssertHeld();
+
+		_writeQueue.push(_writeBuffer);
+		_blockForWrite->set_blocksize(_blockForWrite->blocksize() + _writeBuffer->size());
+		_writeBuffer = NULL;
+		baidu::common::atomic_inc(&_backWriting);
+		_mu.Unlock();
+		_threadPool->AddTask(std::bind(&FileImpl::backgroundWrite, std::weak_ptr<FileImpl>(shared_from_this())));
+		_mu.Lock("StartWrite relock", 1000);
 	}
 
 }

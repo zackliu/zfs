@@ -799,4 +799,9 @@ StatusCode NameSpace::createFile(const std::string &filePathAndName, int flag, i
 		return res;
 	}
 
+	int64_t NameSpace::getNewBlockId()
+	{
+		baidu::MutexLock lock(&mu);
+		return nextBlockId++;
+	}
 }

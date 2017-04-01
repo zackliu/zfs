@@ -41,11 +41,11 @@ public:
                        const CreateFileRequest* request,
                        CreateFileResponse* response,
                        ::google::protobuf::Closure* done);
-/*    void addBlock(::google::protobuf::RpcController* controller,
+    void addBlock(::google::protobuf::RpcController* controller,
                        const AddBlockRequest* request,
                        AddBlockResponse* response,
                        ::google::protobuf::Closure* done);
-    void getFileLocation(::google::protobuf::RpcController* controller,
+/*    void getFileLocation(::google::protobuf::RpcController* controller,
                        const FileLocationRequest* request,
                        FileLocationResponse* response,
                        ::google::protobuf::Closure* done);
@@ -136,12 +136,12 @@ private:
 //    void leaveReadOnly();
 //    void listRecover(sofa::pbrpc::HTTPResponse* response);
     bool logRemote(const NameServerLog& log, std::function<void (bool)> callback);
-//    void syncLogCallback(::google::protobuf::RpcController* controller,
-//                         const ::google::protobuf::Message* request,
-//                         ::google::protobuf::Message* response,
-//                         ::google::protobuf::Closure* done,
-//                         std::vector<FileInfo>* removed,
-//                         bool ret);
+    void syncLogCallback(::google::protobuf::RpcController* controller,
+                         const ::google::protobuf::Message* request,
+                         ::google::protobuf::Message* response,
+                         ::google::protobuf::Closure* done,
+                         std::vector<FileInfo>* removed,
+                         bool ret);
 //    void transToString(const std::map<int32_t, std::set<int64_t> >& chk_set,
 //                       std::string* output);
 //    void transToString(const std::set<int64_t>& block_set, std::string* output);

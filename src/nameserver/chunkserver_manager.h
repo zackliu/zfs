@@ -51,11 +51,18 @@ namespace zfs
 
 		ChunkServerManager(baidu::common::ThreadPool *threadPool, BlockMapping *blockMapping);
 		void cleanChunkServer(ChunkServerInfo *cs, const std::string reason);
+		void removeBlock(int32_t id, int64_t blockId);
+		bool getChunkServerChains(int num, std::vector<std::pair<int32_t , std::string> > *chains, const std::string &clientAddress);
+		std::string getChunkServerAddress(int32_t id);
+		void addBlock(int32_t id, int64_t blockId);
+
 
 	private:
 		void deadCheck();
 		void logStatus();
-
+		Blocks* getBlockMap(int32_t csId);
+		bool getChunkServerPtr(int32_t csId, ChunkServerInfo **info);
+		void randomSelect(std::vector<std::pair<double, ChunkServerInfo*> > *loads, int num);
 	private:
 		Status _status;
 		baidu::common::ThreadPool *_threadPool;

@@ -176,4 +176,108 @@ namespace zfs
 			cs->set_status(kCsReadonly);
 		}
 	}
+
+	void ChunkServerManager::addBlock(int32_t id, int64_t blockId)
+	{
+		Blocks *blocks = getBlockMap(id);
+		if(!blocks)
+		{
+			LOG(WARNING, "Cannot get blocks in C%d", id);
+			return;
+		}
+		blocks->insert(blockId);
+	}
+
+	Blocks* ChunkServerManager::getBlockMap(int32_t csId)
+	{
+		baidu::MutexLock lock(&_mu);
+		auto it = _blockMap.find(csId);
+		if(it == _blockMap.end()) return NULL;
+		return it->second;
+	}
+
+	void ChunkServerManager::removeBlock(int32_t id, int64_t blockId)
+	{
+		Blocks* blocks = getBlockMap(id);
+		if(!blocks)
+		{
+			LOG(WARNING, "Cannot get blocks in C%d", id);
+			return;
+		}
+		blocks->remove(blockId);
+	}
+
+	bool ChunkServerManager::getChunkServerChains(int num, std::vector<std::pair<int32_t, std::string> > *chains,
+	                                              const std::string &clientAddress)
+	{
+		baidu::MutexLock lock(&_mu, "getChunkServerChains", 10);
+		if(num > _chunkServerNum)
+		{
+			LOG(INFO, "not enough alive chunkservers [%ld] for GetChunkServerChains [%d]\n",
+			    _chunkServerNum, num);
+			return false;
+		}
+
+		ChunkServerInfo *localCs = NULL;
+		auto clientIt = _addressMap.lower_bound(clientAddress); //查找是否有chunkserver恰好是client
+		if(clientIt != _addressMap.end())
+		{
+			std::string tempAddress(clientIt->first, 0, clientIt->first.find_last_of(':'));
+			if(tempAddress == clientAddress)
+			{
+				ChunkServerInfo *cs = NULL;
+				if(getChunkServerPtr(clientIt->second, &cs) && !cs->isdead() && !(cs->status() == kCsReadonly))
+				{
+					localCs = cs;
+				}
+			}
+		}
+
+		auto it = _heartbeatList.begin();
+		std::vector<std::pair<double, ChunkServerInfo*> > loads;
+
+		for(; it != _heartbeatList.end(); it++)
+		{
+			std::set<ChunkServerInfo*> &csSet = it->second;
+			for(auto setIt = csSet.begin(); it != csSet.end(); setIt++)
+			{
+				ChunkServerInfo *cs = *setIt;
+				if(cs->status() == kCsReadonly)
+				{
+					LOG(INFO, "Alloc ignore Chunkserver %s: is in offline progress", cs->address().c_str());
+					continue;
+				}
+				double load = cs->load();
+				if(load <= kChunkServerLoadMax)
+				{
+					double localFactor = (cs == localCs ? FLAGS_select_chunkserver_local_factor : 0);
+					loads.push_back(std::make_pair(load-localFactor, cs));//对于本地情况，可以看作负载更低
+				}
+				else
+				{
+					LOG(DEBUG, "Alloc ignore: ChunkServer %s data %ld/%ld buffer %d",
+					    cs->address().c_str(), cs->datasize(),
+					    cs->diskquota(), cs->buffers());
+				}
+			}
+		}
+
+		if((int)loads.size() < num)
+		{
+			LOG(DEBUG, "Only %ld chunkserver of %d is not over overladen, GetChunkServerChains(%d) return false",
+			    loads.size(), _chunkServerNum, num);
+			return false;
+		}
+
+		randomSelect(&loads, num);
+
+		for(int i = 0; i < num; i++)
+		{
+			chains->push_back(std::make_pair(loads[i].second->id(), loads[i].second->address()));
+		}
+
+		return true;
+
+
+	}
 }

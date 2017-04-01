@@ -11,6 +11,13 @@
 #include <common/thread_pool.h>
 #include <common/logging.h>
 
+using baidu::common::LogLevel::INFO;
+using baidu::common::LogLevel::DEBUG;
+using baidu::common::LogLevel::ERROR;
+using baidu::common::LogLevel::FATAL;
+using baidu::common::LogLevel::WARNING;
+
+
 namespace zfs {
 
 class Rpc {
@@ -51,7 +58,8 @@ public:
 
     template <class Stub, class Request, class Response, class Callback>
     bool sendRequest(Stub *stub, 
-                     void(Stub::*func)(google::protobuf::RpcController*, const Request *request, Response *response, Callback *callback),
+                     void(Stub::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
+                     const Request *request, Response *response,
                      int rpcTimeout,
                      int rpcRetryTimes)
     {
@@ -82,11 +90,13 @@ public:
     template <class Stub, class Request, class Response, class Callback>
     void asyncRequest(Stub *stub,
                       void(Stub::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
+                      const Request *request, Response *response,
+                      std::function<void (const Request*, Response*, bool, int)> callback,
                       int rpcTimeout,
                       int rpcRetryTimes)
     {
         sofa::pbrpc::RpcController *controller = new sofa::pbrpc::RpcController();
-        google::protobuf::Closure* done = sofa::pbrpc::NewClosure(&Rpc::template RpcCallback<Request, Response, Callback>,
+        google::protobuf::Closure* done = sofa::pbrpc::NewClosure(&Rpc::template rpcCallback<Request, Response, Callback>,
                                                                   controller, 
                                                                   request, 
                                                                   response, 
@@ -108,10 +118,10 @@ public:
             if (error != sofa::pbrpc::RPC_ERROR_SEND_BUFFER_FULL) 
             {
                 LOG(WARNING, "RpcCallback: %s %s\n",
-                    rpc_controller->RemoteAddress().c_str(), rpc_controller->ErrorText().c_str());
+                    rpcController->RemoteAddress().c_str(), rpc_controller->ErrorText().c_str());
             } 
         }
-        delete rpc_controller;
+        delete rpcController;
         callback(request, response, failed, error);
     }
 private:

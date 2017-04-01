@@ -30,13 +30,13 @@ public:
 //    StatusCode symlink(const std::string &src, const std::string &dst, NameServerLog *log = NULL);
 //
     bool getFileInfo(const std::string &path, FileInfo *fileInfo);
-//    bool updateFileInfo(const FileInfo &fileInfo, NameServerLog* log = NULL);
+    bool updateFileInfo(const FileInfo &fileInfo, NameServerLog* log = NULL);
 //    bool deleteFileInfo(const std::string fileKey, NameServerLog* log = NULL);
     int64_t getVersion() const;
     bool rebuildBlockMap(std::function<void (const FileInfo&)> callback);
     static std::string normalizePath(const std::string &path);
 //    void tailLog(const std::string &log);
-//    int64_t getNewBlockId();
+    int64_t getNewBlockId();
 
 private:
     enum FileType

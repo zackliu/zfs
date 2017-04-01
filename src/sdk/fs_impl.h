@@ -12,6 +12,8 @@
 
 #include "zfs.h"
 #include "../proto/status_code.pb.h"
+#include "../rpc/rpc.h"
+#include "../rpc/nameserver_client.h"
 
 namespace zfs
 {
@@ -31,7 +33,10 @@ namespace zfs
 		int32_t closeFile(File *file);
 
 	private:
+		Rpc *_rpcClient;
+		NameServerClient *_nameServerClient;
 		std::vector<std::string> _nameServerAddress;
+		int32_t _leaderNameServerIdx;
 		std::string _localhostName;
 		baidu::ThreadPool *_threadPool;
 	};

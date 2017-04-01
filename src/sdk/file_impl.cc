@@ -11,11 +11,20 @@
 
 #include "../proto/status_code.pb.h"
 #include "fs_impl.h"
+#include "../rpc/rpc.h"
+#include "../rpc/nameserver_client.h"
 
 
 DECLARE_int32(sdk_file_reada_len);
 DECLARE_int32(sdk_createblock_retry);
 DECLARE_int32(sdk_write_retry_times);
+
+using baidu::common::LogLevel::INFO;
+using baidu::common::LogLevel::DEBUG;
+using baidu::common::LogLevel::ERROR;
+using baidu::common::LogLevel::FATAL;
+using baidu::common::LogLevel::WARNING;
+
 
 namespace zfs
 {
@@ -40,7 +49,7 @@ namespace zfs
 	int WriteBuffer::append(const char *buf, int len)
 	{
 		assert(_dataSize + len <= _bufSize);
-		memcpy(_buf, buf, len);
+		memcpy(_buf + _dataSize, buf, len);
 		_dataSize+=len;
 		return _dataSize;
 	}
@@ -151,6 +160,101 @@ namespace zfs
 			_readOffset += res;
 		}
 		return res;
+	}
+
+	int32_t FileImpl::write(const char *buf, int32_t writeSize)
+	{
+		baidu::common::timer::AutoTimer autoTimer(100, "write", _name.c_str());
+
+		{
+			baidu::MutexLock lock(&_mu, "write", 1000);
+			if(!(_openFlag & O_WRONLY))
+			{
+				return BAD_PARAMETER;
+			}
+			else if(_bgError)
+			{
+				return TIMEOUT;
+			}
+			else if(_closed)
+			{
+				return BAD_PARAMETER;
+			}
+			baidu::common::atomic_inc(&_backWriting);
+		}
+
+		if(_openFlag & O_WRONLY)
+		{
+			baidu::MutexLock loc(&_mu, "write addblock", 1000);
+			if(_chunkServers.empty())
+			{
+				int res = 0;
+				for(int i = 0; i < FLAGS_sdk_createblock_retry; i++)
+				{
+					res = addBlock();
+					if(res == kOK) break;
+					sleep(10);
+				}
+				if(res != kOK)
+				{
+					LOG(WARNING, "AddBlock for %s failed", _name.c_str());
+					baidu::common::atomic_dec(&_backWriting);
+					return res;
+				}
+			}
+		}
+
+		int32_t  w = 0;
+		while(w < writeSize)
+		{
+			baidu::MutexLock lock(&_mu, "writeInternal", 1000);
+			if(_writeBuffer == NULL)
+			{
+				_writeBuffer = new WriteBuffer(++_lastSeq, 256*1024, _blockForWrite->blockid(), _blockForWrite->blocksize());
+			}
+
+			if((writeSize - w) < _writeBuffer->available()) //可以一次装入buf
+			{
+				_writeBuffer->append(buf+w, writeSize-w);
+				w = writeSize;
+				break;
+			}
+			else
+			{
+				int n = _writeBuffer->available();
+				_writeBuffer -> append(buf+w, n);
+			}
+
+			if(_writeBuffer -> available() == 0)
+			{
+				startWrite();
+			}
+		}
+
+		baidu::common::atomic_add64(&_writeOffset, w);
+		baidu::common::atomic_dec(&_backWriting);
+
+		return w;
+	}
+
+	int32_t FileImpl::addBlock()
+	{
+		AddBlockRequest request;
+		AddBlockResponse response;
+
+		request.set_sequenceid(0);
+		request.set_filename(_name);
+		request.set_clientaddress(_fs->_localhostName);
+		bool result = _fs->_nameServerClient->sendRequest(&NameServer_Stub::addBlock, &request, &response, 15, 1);
+
+		if(!result || !response.has_block())
+		{
+			LOG(WARNING, "Nameserver AddBlock failed: %s", _name.c_str());
+			if(!result) return TIMEOUT;
+			else return -1;
+		}
+
+		_blockForWrite = new LocatedBlock(response.block());
 	}
 
 }

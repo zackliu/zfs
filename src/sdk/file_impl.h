@@ -86,6 +86,7 @@ namespace zfs
 		int32_t pread(char *buf, int32_t readSize, int64_t offset, bool readAhead = false);
 		int32_t read(char* buf, int32_t readSize);
 		int32_t write(const char* buf, int32_t writeSize);
+		void startWrite(); //add buffer
 		int32_t close();
 
 
@@ -96,6 +97,9 @@ namespace zfs
 				return wba->sequence() > wbb->sequence();
 			}
 		};
+
+	private:
+		int32_t addBlock();
 
 	private:
 		FileSystemImpl *_fs;

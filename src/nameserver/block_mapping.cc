@@ -460,4 +460,35 @@ bool BlockMapping::getBlockPtr(int64_t blockId, NSBlock **block)
 		_blockMap.erase(blockId);
 		gBlocksNum.Dec();
 	}
+
+	void BlockMapping::removeBlocksForFile(const FileInfo &fileInfo, std::map<int64_t, std::set<int32_t> > *blocks)
+	{
+		for(int i = 0; i < fileInfo.blocks_size(); i++)
+		{
+			removeBlock(fileInfo.blocks(i), blocks);
+			LOG(INFO, "Remove block #%ld, for %s", fileInfo.blocks(i), fileInfo.name().c_str());
+		}
+	}
+
+	void BlockMapping::addBlock(int64_t blockId, int32_t replicaNum, const std::vector<int32_t> &initReplica)
+	{
+		NSBlock *nsBlock = new NSBlock(blockId, replicaNum, -1, 0);
+		if(nsBlock->recoverStatus == kNotInRecover)
+		{
+			nsBlock->replica.insert(initReplica.begin(), initReplica.end());
+		}
+		else
+		{
+			nsBlock->incompleteReplica.insert(initReplica.begin(), initReplica.end());
+		}
+
+		LOG(DEBUG, "Init block info: #%ld", blockId);
+
+		gBlocksNum.Inc();
+		baidu::MutexLock lock(&_mu);
+		baidu::common::timer::TimeChecker insertTime;
+		auto result = _blockMap.insert(std::make_pair(blockId, nsBlock));
+		assert(result.second);
+		insertTime.Check(10*1000, "[AddBlock] Insert into blockMapping");
+	}
 }

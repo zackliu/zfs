@@ -129,6 +129,14 @@ namespace zfs
 		return true;
 	}
 
+	void NameServerImpl::syncLogCallback(::google::protobuf::RpcController *controller,
+	                                     const ::google::protobuf::Message *request,
+	                                     ::google::protobuf::Message *response, ::google::protobuf::Closure *done,
+	                                     std::vector<FileInfo> *removed, bool ret)
+	{
+		done->Run();
+	}
+
 	void NameServerImpl::createFile(::google::protobuf::RpcController* controller,
 	                       const CreateFileRequest* request,
 	                       CreateFileResponse* response,
@@ -163,6 +171,96 @@ namespace zfs
 		}
 
 		done->Run();
+	}
+
+	void NameServerImpl::addBlock(::google::protobuf::RpcController *controller, const AddBlockRequest *request,
+	                              AddBlockResponse *response, ::google::protobuf::Closure *done)
+	{
+		response->set_sequenceid(request->sequenceid());
+		if(_readonly)
+		{
+			LOG(INFO, "AddBlock failed: %s, ReadOnly", request->filename().c_str());
+			response->set_status(kSafeMode);
+			done->Run();
+			return;
+		}
+
+		gAddBlock.Inc();
+		std::string path = NameSpace::normalizePath(request->filename());
+		FileInfo fileInfo;
+		if(!_namespace->getFileInfo(path, &fileInfo))
+		{
+			LOG(INFO, "AddBlock Failed: %s, cannot find file", request->filename().c_str());
+			response->set_status(kNsNotFound);
+			done->Run();
+			return;
+		}
+
+		if(fileInfo.blocks_size() > 0) //删除原有的block
+		{
+			std::map<int64_t, std::set<int32_t> > blockToRemove;
+			_blockMapping->removeBlocksForFile(fileInfo, &blockToRemove);
+			for(auto it = blockToRemove.begin(); it != blockToRemove.end(); it++)
+			{
+				auto chunkServers = it->second;
+				for(auto csIt = chunkServers.begin(); csIt != chunkServers.end(); csIt++)
+				{
+					_chunkserverManager->removeBlock(*csIt, it->first);
+				}
+			}
+			fileInfo.clear_blocks();
+		}
+
+		int replicaNum = fileInfo.replicas();
+
+		std::vector<std::pair<int32_t , std::string> > chains;
+		baidu::common::timer::TimeChecker addBlockTimer;
+		if(_chunkserverManager->getChunkServerChains(replicaNum, &chains, request->clientaddress()))
+		{
+			addBlockTimer.Check(50*1000, "GetChunkServerChains");
+			int64_t newBlockId = _namespace->getNewBlockId();
+			fileInfo.add_blocks(newBlockId);
+			fileInfo.set_version(-1);
+			for(int i = 0; i < replicaNum; i++)
+			{
+				fileInfo.add_csaddrs(_chunkserverManager->getChunkServerAddress(chains[i].first));
+			}
+
+			NameServerLog log;
+			if(!_namespace->updateFileInfo(fileInfo, &log))
+			{
+				LOG(WARNING, "Update File info failed: %s", path.c_str());
+				response->set_status(kUpdateError);
+			}
+
+			LocatedBlock *block = response->mutable_block();
+			std::vector<int32_t > replicas;
+			for(int i = 0; i < replicaNum; i++)
+			{
+				ChunkServerInfo *info = block->add_chains();
+				int32_t csId = chains[i].first;
+				info->set_address(chains[i].second);
+				LOG(INFO, "Add C%d %s to #%ld, response", chains[i].first, chains[i].second.c_str(), newBlockId);
+				replicas.push_back(csId);
+				addBlockTimer.Reset();
+				_chunkserverManager->addBlock(csId, newBlockId);
+				addBlockTimer.Check(50*1000, "AddBlock");
+			}
+
+			_blockMapping->addBlock(newBlockId, replicaNum, replicas);
+			addBlockTimer.Check(1000*50, "AddNewBlock");
+			block->set_blockid(newBlockId);
+			response->set_status(kOK);
+			//logRemote(log, std::bind(&NameServerImpl::syncLogCallback, this, controller, request, response, done, (std::vector<FileInfo>*)NULL, std::placeholders::_1));
+			//done->Run();
+			_workThreadPool->AddTask(std::bind(&NameServerImpl::syncLogCallback, this, controller, request, response, done, (std::vector<FileInfo>*)NULL, true));
+		}
+		else
+		{
+			LOG(WARNING, "AddBlock Failed: %s", path.c_str());
+			response->set_status(kGetChunkServerError);
+			done->Run();
+		}
 	}
 
 }

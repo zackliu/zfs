@@ -83,6 +83,7 @@ public:
 //    void listRecover(RecoverBlockSet* blocks);
 //    int32_t getCheckNum();
 //    void markIncomplete(int64_t blockId);
+    void addBlock(int64_t blockId, int32_t replicaNum, const std::vector<int32_t > &initReplica);
 private:
     void dealWithDeadBlockInternal(int32_t csId, int64_t blockId);
 //    void listCheckList(const CheckList& checkList, std::map<int32_t, std::set<int64_t> > *result);

@@ -37,7 +37,7 @@ public:
     template <class T>
     bool getStub(const std::string server, T **stub)
     {
-        baidu::MutexLock lock(&hostMapLock)  //加锁，到lock销毁时解锁
+        baidu::MutexLock lock(&hostMapLock);  //加锁，到lock销毁时解锁
         sofa::pbrpc::RpcChannel *channel = NULL;
         HostMap::iterator it = hostMap.find(server);
         if(it == hostMap.end())
@@ -118,7 +118,7 @@ public:
             if (error != sofa::pbrpc::RPC_ERROR_SEND_BUFFER_FULL) 
             {
                 LOG(WARNING, "RpcCallback: %s %s\n",
-                    rpcController->RemoteAddress().c_str(), rpc_controller->ErrorText().c_str());
+                    rpcController->RemoteAddress().c_str(), rpcController->ErrorText().c_str());
             } 
         }
         delete rpcController;

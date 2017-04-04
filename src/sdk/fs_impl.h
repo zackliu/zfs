@@ -23,6 +23,7 @@ namespace zfs
 		friend  class FileImpl;
 		FileSystemImpl();
 		~FileSystemImpl();
+		bool connectNameServer(const char *nameServer);
 
 		int32_t openFile(const char *path, int32_t flags, File **file,
 		                 const ReadOptions &readOptions);

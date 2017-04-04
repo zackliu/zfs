@@ -1,0 +1,44 @@
+//
+// Created by zackliu on 4/4/17.
+//
+
+#ifndef CLOUDSTORAGE_DATA_BLOCK_H
+#define CLOUDSTORAGE_DATA_BLOCK_H
+
+#include <string>
+#include <vector>
+
+#include <common/mutex.h>
+#include <common/thread_pool.h>
+#include <common/sliding_window.h>
+
+#include "../proto/status_code.pb.h"
+#include "../proto/block.pb.h"
+
+namespace zfs
+{
+	struct Buffer
+	{
+		const char *_data;
+		int32_t _len;
+		Buffer(const char *buff, int32_t len)
+				:_data(buff), _len(len) {}
+		Buffer()
+				:_data(NULL), _len(0) {}
+		Buffer(const Buffer &o)
+				:_data(o._data), _len(o._len){}
+	};
+
+	class FileCache;
+	class Disk;
+
+	class Block
+	{
+	public:
+		Block(const BlockMeta &meta, Disk *disk, FileCache *fileCache);
+		~Block();
+	};
+}
+
+
+#endif //CLOUDSTORAGE_DATA_BLOCK_H

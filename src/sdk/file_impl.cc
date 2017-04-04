@@ -320,4 +320,9 @@ namespace zfs
 		_mu.Lock("StartWrite relock", 1000);
 	}
 
+	void FileImpl::onWriteCommit(int32_t, int32_t)
+	{
+
+	}
+
 }

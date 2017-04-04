@@ -13,6 +13,37 @@
 
 #include "counter_manager.h"
 
+namespace zfs
+{
+	class BlockMeta;
+	class Block;
+	class FileCache;
+	class Disk;
+	typedef  DiskCounterManager::DiskStat DiskStat;
 
+	class BlockManager
+	{
+	public:
+		BlockManager(const std::string &storePath);
+		~BlockManager();
+		bool loadStorage();
+		bool closeBlock(Block *block, bool sync);
+
+	private:
+		void checkStorePath(const std::string &storePath);
+		void logStatus();
+
+
+	private:
+		baidu::ThreadPool *_threadPool;
+		std::vector<std::pair<DiskStat, Disk*> > _disks;
+		FileCache *_fileCache;
+		baidu::Mutex _mu;
+		std::map<int64_t , Block*> _blockMap;
+		int64_t _diskQuota;
+		DiskStat _stat;
+		DiskCounterManager *_counterManager;
+	};
+}
 
 #endif //CLOUDSTORAGE_BLOCK_MANAGER_H

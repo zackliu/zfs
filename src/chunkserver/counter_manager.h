@@ -55,11 +55,71 @@ namespace zfs
 	};
 
 
-	class DiskCounterManager
-	{
+	class DiskCounterManager {
 	public:
+		struct DiskCounters {
+			// block number
+			baidu::common::Counter blocks;
+			// size of buf written a period of time (stat)
+			baidu::common::Counter write_bytes;
+			// number of blocks are being writing
+			baidu::common::Counter writing_blocks;
+			// size of buf writing to blocks
+			// Inc when a buf is created (in Block::Write)
+			// Dec when the buf is popped out by sliding window
+			baidu::common::Counter writing_bytes;
+			// data size
+			baidu::common::Counter data_size;
+			// number of buf in waiting list (block_buf_list_), equivalent to block_buf_list_.size()
+			// Inc when adding a buf to block_buf_list_
+			// Dec when a buf is erased from block_buf_list_
+			baidu::common::Counter pending_buf;
+			baidu::common::Counter mem_read_ops;
+			baidu::common::Counter disk_read_ops;
+		};
+		struct DiskStat {
+			int64_t blocks;
+			int64_t write_bytes;
+			int64_t writing_blocks;
+			int64_t writing_bytes;
+			int64_t data_size;
+			int64_t pending_buf;
+			int64_t mem_read_ops;
+			int64_t disk_read_ops;
+			double load;
+			DiskStat() :
+					blocks(0),
+					write_bytes(0),
+					writing_blocks(0),
+					writing_bytes(0),
+					data_size(0),
+					pending_buf(0),
+					mem_read_ops(0),
+					disk_read_ops(0),
+					load(0.0) {}
+			void ToString(std::string* str) {
+				str->append(" blocks=" + baidu::common::NumToString(blocks));
+				str->append(" w_bytes=" + baidu::common::HumanReadableString(write_bytes));
+				str->append(" wing_blocks=" + baidu::common::HumanReadableString(writing_blocks));
+				str->append(" wing_bytes=" + baidu::common::HumanReadableString(writing_bytes));
+				str->append(" size=" + baidu::common::HumanReadableString(data_size));
+				str->append(" pending_w=" + baidu::common::HumanReadableString(pending_buf));
+				str->append(" mem_read_ops=" + baidu::common::NumToString(mem_read_ops));
+				str->append(" disk_read_ops=" + baidu::common::NumToString(disk_read_ops));
+			}
+			bool operator<(const DiskStat& s) const {
+				return s.load < load;
+			}
 
-	};
+		};
+	public:
+		DiskCounterManager();
+		void GatherCounters(DiskCounters* counters);
+		DiskStat GetStat();
+	private:
+		baidu::Mutex mu_;
+		DiskStat stat_;
+		int64_t last_gather_time_;
 }
 
 #endif //CLOUDSTORAGE_COUNTER_MANAGER_H

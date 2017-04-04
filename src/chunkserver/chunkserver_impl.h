@@ -33,6 +33,13 @@ namespace zfs
 		                        WriteBlockResponse* response,
 		                        ::google::protobuf::Closure* done);
 
+
+	private:
+		void logStatus(bool routine);
+		void doRegister();
+
+
+
 	private:
 		BlockManager *_blockManager;
 		std::string _dataServerAddress;
@@ -54,6 +61,8 @@ namespace zfs
 		bool _isFirstRound;
 		int64_t  _firstRoundReportStart;
 		volatile bool _serviceStop;
+
+		Params _param;
 	};
 }
 

@@ -151,7 +151,20 @@ namespace zfs
 
 		_workThreadPool->DelayTask(1, std::bind(&ChunkServerImpl::sendBlockReport, this));
 		_workThreadPool->DelayTask(1, std::bind(&ChunkServerImpl::sendHeartbeat, this));
+	}
 
+	void ChunkServerImpl::sendBlockReport()
+	{
+		BlockReportRequest request;
+		request.set_sequenceid(baidu::common::timer::get_micros());
+		request.set_chunkserverid(_chunkServerId);
+		request.set_chunkserveraddr(_dataServerAddress);
+		request.set_start(_lastReportBlockId + 1);
+		request.set_reportid(_reportId);
+		int64_t last_report_id = _reportId;
 
+		std::vector<BlockMeta> blocks;
+		int32_t num = _isFirstRound ? 10000 : _param.reportsize();
+		int64_t end = _blockManager->listBlocks(&blocks, _lastReportBlockId+1, num);
 	}
 }

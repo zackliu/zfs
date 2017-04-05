@@ -33,6 +33,11 @@ namespace zfs
 		                        WriteBlockResponse* response,
 		                        ::google::protobuf::Closure* done);
 
+		void sendBlockReport();
+		void stopBlockReport();
+		void sendHeartbeat();
+		bool reportFinish(Block *block);
+
 
 	private:
 		void logStatus(bool routine);
@@ -42,7 +47,7 @@ namespace zfs
 
 	private:
 		BlockManager *_blockManager;
-		std::string _dataServerAddress;
+		std::string _dataServerAddress; //本地地址
 		Rpc *_rpcClient;
 
 		baidu::ThreadPool *_workThreadPool;
@@ -52,12 +57,12 @@ namespace zfs
 		baidu::ThreadPool *_heartbeatThreadPool;
 
 		NameServerClient *_nameServerClient;
-		int32_t _chunkServerId;
+		int32_t _chunkServerId;//由resiger时候返回
 		ChunkserverCounterManager _counterManager;
 		int64_t _heartbeatTaskId;
 		volatile  int64_t  _blockreportTaskId;
 		int64_t  _lastReportBlockId;
-		int64_t  _reportId;
+		int64_t  _reportId;//初始为0，之后是response+1
 		bool _isFirstRound;
 		int64_t  _firstRoundReportStart;
 		volatile bool _serviceStop;

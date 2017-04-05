@@ -33,6 +33,7 @@ namespace zfs
 		int64_t namespaceVersion() const;
 		bool setNamespaceVersion(int64_t version);
 		bool addBlock(int64_t blockId, Disk *disk, BlockMeta meta);
+		int64_t listBlock(std::vector<BlockMeta> *blocks, int64_t offset, int32_t num);
 
 	private:
 		void checkStorePath(const std::string &storePath);

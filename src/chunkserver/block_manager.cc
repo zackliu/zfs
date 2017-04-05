@@ -202,6 +202,37 @@ namespace zfs
 		return _blockMap.insert(std::make_pair(blockId, block)).second;
 	}
 
+	int64_t BlockManager::listBlock(std::vector<BlockMeta> *blocks, int64_t offset, int32_t num)
+	{
+		std::vector<leveldb::Iterator*> iters;
+		for(auto it = _disks.begin(); it != _disks.end(); it++)
+		{
+			Disk *disk = it->second;
+			disk->seek(offset, &iters);
+		}
+
+		if(iters.size() == 0) return 0;
+
+		int32_t idx = -1;
+		int64_t largestId = 0;
+		while(blocks->size() < num && iters.size() != 0)
+		{
+			int64_t blockId = findSmallest(iters, &idx);
+			if(blockId == -1) return largestId;
+			auto it = iters[idx];
+			BlockMeta meta;
+			bool result = meta.ParseFromArray(it->value().data(), it->value().size());
+			assert(result);
+			assert(blockId == meta.block_id());
+			blocks->push_back(meta);
+			largestId = blockId;
+			iters[idx]->Next();
+		}
+		for(int i = 0; i < iters.size(); i++) delete iters[i];
+
+		return largestId;
+	}
+
 
 
 }

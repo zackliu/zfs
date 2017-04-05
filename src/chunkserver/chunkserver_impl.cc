@@ -91,7 +91,67 @@ namespace zfs
 		assert(result == true);
 		_rpcClient = new Rpc();
 		_nameServerClient = new NameServerClient(_rpcClient, FLAGS_nameserver_nodes);
-		_heartbeatThreadPool->AddTask(std::bind(&ChunkServerImpl::logStatus, this, true));
+		//_heartbeatThreadPool->AddTask(std::bind(&ChunkServerImpl::logStatus, this, true));
 		_heartbeatThreadPool->AddTask(std::bind(&ChunkServerImpl::doRegister, this));
+	}
+
+	ChunkServerImpl::~ChunkServerImpl()
+	{
+		//
+	}
+
+	void ChunkServerImpl::doRegister()
+	{
+		RegisterRequest request;
+		RegisterResponse response;
+		request.set_chunkserveraddr(_dataServerAddress);
+		request.set_diskquota(_blockManager->diskQuota());
+		request.set_namespaceversion(_blockManager->namespaceVersion());
+		request.set_tag(FLAGS_chunkserver_tag);
+
+		//向nameserver注册
+		if(!_nameServerClient->sendRequest(&NameServer_Stub::doRegister, &request, &response, 20))
+		{
+			_workThreadPool->DelayTask(5000, std::bind(&ChunkServerImpl::doRegister, this));
+			return;
+		}
+
+		if(response.status() != kOK)
+		{
+			_workThreadPool->DelayTask(5000, std::bind(&ChunkServerImpl::doRegister, this));
+			return;
+		}
+
+		if(response.reportinterval() != -1)
+		{
+			_param.set_reportinterval(response.reportinterval());
+		}
+		if(response.reportsize() != -1)
+		{
+			_param.set_recoversize(response.reportsize());
+		}
+
+		//判断当前版本是否最新
+		int64_t newVersion = response.namespaceversion();
+		if(_blockManager->namespaceVersion() != newVersion)
+		{
+			LOG(INFO, "Use new namespace version: %ld, clean local data", newVersion);
+			if(!_blockManager->cleanUp(newVersion))
+				LOG(FATAL, "Remove local blocks fail");
+			if(!_blockManager->setNamespaceVersion(newVersion))
+				LOG(FATAL, "SetNamespaceVersion fail");
+			_workThreadPool->AddTask(std::bind(&ChunkServerImpl::doRegister, this));
+			return;
+		}
+
+		_chunkServerId = response.chunkserverid();
+		_reportId = response.reportid() + 1;
+		_firstRoundReportStart = _lastReportBlockId;
+		_isFirstRound = true;
+
+		_workThreadPool->DelayTask(1, std::bind(&ChunkServerImpl::sendBlockReport, this));
+		_workThreadPool->DelayTask(1, std::bind(&ChunkServerImpl::sendHeartbeat, this));
+
+
 	}
 }

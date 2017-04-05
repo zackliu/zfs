@@ -31,6 +31,9 @@ namespace zfs
 		~Disk();
 
 		bool loadStorage(std::function<void (int64_t, Disk*, BlockMeta)> callback);
+		int64_t namespaceVersion() const;
+		bool setNamespaceVersion(int64_t version);
+		int64_t getQuota();
 
 	private:
 		friend class Block;

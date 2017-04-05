@@ -168,6 +168,40 @@ namespace zfs
 		//checkChunkServerMeta(storePathList);
 	}
 
+	int64_t BlockManager::diskQuota()
+	{
+		return _diskQuota;
+	}
+
+	int64_t BlockManager::namespaceVersion() const
+	{
+		int64_t version = -1;
+		for(auto it = _disks.begin(); it != _disks.end(); it++)
+		{
+			Disk *disk = it->second;
+			if(version == -1) version = disk->namespaceVersion();
+			if(version != disk->namespaceVersion()) return -1; //每个磁盘version必须相同
+		}
+		return version;
+	}
+
+	bool BlockManager::setNamespaceVersion(int64_t version)
+	{
+		for(auto it = _disks.begin(); it != _disks.end(); it++)
+		{
+			if(!it->second->setNamespaceVersion(version)) return false;
+		}
+		return true;
+	}
+
+	bool BlockManager::addBlock(int64_t blockId, Disk *disk, BlockMeta meta)
+	{
+		Block *block = new Block(meta, disk, _fileCache);
+		block->addRef();
+		baidu::MutexLock lock(&_mu);
+		return _blockMap.insert(std::make_pair(blockId, block)).second;
+	}
+
 
 
 }

@@ -12,6 +12,7 @@
 #include <common/thread_pool.h>
 
 #include "counter_manager.h"
+#include "../proto/block.pb.h"
 
 namespace zfs
 {
@@ -28,6 +29,10 @@ namespace zfs
 		~BlockManager();
 		bool loadStorage();
 		bool closeBlock(Block *block, bool sync);
+		int64_t diskQuota();
+		int64_t namespaceVersion() const;
+		bool setNamespaceVersion(int64_t version);
+		bool addBlock(int64_t blockId, Disk *disk, BlockMeta meta);
 
 	private:
 		void checkStorePath(const std::string &storePath);

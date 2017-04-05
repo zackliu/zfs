@@ -37,6 +37,35 @@ namespace zfs
 	public:
 		Block(const BlockMeta &meta, Disk *disk, FileCache *fileCache);
 		~Block();
+
+		void addRef();
+		void decRef();
+		int getRef() const;
+		int64_t read(char *buf, int64_t len, int64_t offset);
+		bool write(int32_t seq, int64_t offset, const char *data, int64_t len, int64_t *addUse = NULL);
+
+		void setRecover();
+		bool isRecover() const;
+
+		void setVersion(int64_t version);
+		int getVersion() const;
+
+	private:
+
+	private:
+		enum Type
+		{
+			InDisk,
+			InMen,
+		};
+
+		enum fdStatus
+		{
+			kNotCreated = -1;
+			kClosed = -2;
+		};
+
+
 	};
 }
 

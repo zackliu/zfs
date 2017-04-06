@@ -302,4 +302,64 @@ namespace zfs
 			}
 		}
 	}
+
+	bool ChunkServerManager::handleRegister(const std::string &ip, const RegisterRequest *request,
+	                                        RegisterResponse *response)
+	{
+		const std::string &address = request->chunkserveraddr();
+		StatusCode status = kOK;
+		int csId = -1;
+
+		baidu::MutexLock lock(&_mu, "handleRegister", 10);
+		auto it = _addressMap.find(address);
+		if(it == _addressMap.end())
+		{
+			//加入chunnkServers, map, heartbeatlist
+			csId = addChunkServer(request->chunkserveraddr(), ip, request->tag(), request->diskquota());
+			assert(csId >= 0);
+			response->set_chunkserverid(csId);
+		}
+		else
+		{
+			csId = it->second;
+			ChunkServerInfo *csInfo;
+			assert(getChunkServerPtr(csId, &csInfo));
+			if(csInfo->status() == kCsWaitClean || csInfo->status() == kCsCleaning)
+			{
+				status = kNotOK;
+			}
+			else
+			{
+				updateChunkServer(csId, request->tag(), request->diskquota());
+				auto it = _blockMap.find(csId);
+				it->second->moveNew();
+				response->set_reportid(it->second->getReportId());
+			}
+		}
+
+		response->set_chunkserverid(csId);
+		response->set_reportinterval(FLAGS_blockreport_interval);
+		response->set_reportsize(FLAGS_blockreport_size);
+		response->set_status(status);
+
+		return _chunkServerNum>=FLAGS_expect_chunkserver_num;
+	}
+
+	bool ChunkServerManager::removeChunkServer(const std::string &address)
+	{
+		baidu::MutexLock lock(&_mu, "remvoeChunkServer", 10);
+		auto it = _addressMap.find(address);
+		if(it == _addressMap.end()) return false;
+
+		ChunkServerInfo *csInfo = NULL;
+		assert(getChunkServerPtr(it->second, &csInfo));
+		if(csInfo->status() == kCsActive)
+		{
+			csInfo->set_status(kCsWaitClean);
+			_threadPool->AddTask(std::bind(&ChunkServerManager::cleanChunkServer, this, csInfo, std::string("Dead")));
+		}
+		return true;
+	}
+
+
 }

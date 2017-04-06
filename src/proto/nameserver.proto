@@ -407,7 +407,7 @@ service NameServer
     rpc shutdownChunkServerStat(ShutdownChunkServerStatRequest) returns(ShutdownChunkServerStatResponse);
     rpc diskUsage(DiskUsageRequest) returns(DiskUsageResponse);
 
-    rpc registerService(RegisterRequest) returns(RegisterResponse);
+    rpc doRegister(RegisterRequest) returns(RegisterResponse);
     rpc heartBeat(HeartBeatRequest) returns(HeartBeatResponse);
     rpc blockReport(BlockReportRequest) returns(BlockReportResponse);
     rpc blockReceived(BlockReceivedRequest) returns(BlockReceivedResponse);

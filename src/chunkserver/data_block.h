@@ -50,6 +50,10 @@ namespace zfs
 		void setVersion(int64_t version);
 		int getVersion() const;
 
+		bool cleanUp(int64_t namespaceVersion);
+
+		StatusCode setDeleted();
+
 	private:
 
 	private:
@@ -61,10 +65,31 @@ namespace zfs
 
 		enum fdStatus
 		{
-			kNotCreated = -1;
-			kClosed = -2;
+			kNotCreated = -1,
+			kClosed = -2,
 		};
 
+		Disk *_disk;
+		BlockMeta _meta;
+		int32_t _lastSeq;
+		int32_t  _sliceNum;
+		char *_blockBuf;
+		int64_t  _bufLen;
+		int64_t  _bufDataLen;
+		std::vector<std::pair<const char*, int> > _blockBufList;
+		bool _diskWriting;
+		std::string _diskFile;
+		int64_t _diskFileSize;
+		int _fileDesc;
+		volatile  int _refs;
+		baidu::Mutex _mu;
+		baidu::CondVar _closeCv;
+		baidu::common::SlidingWindow<Buffer> *_recvWindow;
+		bool _isRocover;
+		bool _finished;
+		volatile  _deleted;
+
+		FileCache *_fileCache;
 
 	};
 }

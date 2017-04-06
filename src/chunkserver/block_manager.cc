@@ -202,7 +202,8 @@ namespace zfs
 		return _blockMap.insert(std::make_pair(blockId, block)).second;
 	}
 
-	int64_t BlockManager::listBlock(std::vector<BlockMeta> *blocks, int64_t offset, int32_t num)
+	//将blockid为offset的block取出
+	int64_t BlockManager::listBlocks(std::vector<BlockMeta> *blocks, int64_t offset, int32_t num)
 	{
 		std::vector<leveldb::Iterator*> iters;
 		for(auto it = _disks.begin(); it != _disks.end(); it++)
@@ -233,6 +234,62 @@ namespace zfs
 		return largestId;
 	}
 
+	int64_t BlockManager::findSmallest(std::vector<leveldb::Iterator *> &iters, int32_t *idx)
+	{
+		int64_t id = LLONG_MAX;
+		for(int i = 0; i < iters.size(); i++)
+		{
+			auto it = iters[i];
+			if(!it->Valid())
+			{
+				delete it;
+				iters[i] = iters[iters.size()-1];
+				iters.resize(iters.size()-1);
+				i--;
+				continue;
+			}
 
+			int64_t tmpId;
+			if(1 != sscanf(it->key().data(), "%ld", &tmpId))
+			{
+				delete it;
+				iters[i] = iters[iters.size()-1];
+				iters.resize(iters.size()-1);
+				i--;
+				continue;
+			}
+
+			if(tmpId < id)
+			{
+				id = tmpId;
+				*idx = i;
+			}
+		}
+
+		if(id == LLONG_MAX)
+		{
+			return -1;
+		}
+		return id;
+	}
+
+	bool BlockManager::cleanUp(int64_t namespaceVersion)
+	{
+		for(auto it = _blockMap.begin(); it != _blockMap.end(); it++)
+		{
+			Block *block = it->second;
+			if(block->cleanUp(namespaceVersion))
+			{
+				_fileCache->eraseFileCache(block->getFilePath());
+				block->decRef();
+				_blockMap.erase(it++);
+			}
+			else
+			{
+				it++;
+			}
+		}
+		return true;
+	}
 
 }

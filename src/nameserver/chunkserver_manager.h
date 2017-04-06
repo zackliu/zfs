@@ -55,7 +55,11 @@ namespace zfs
 		bool getChunkServerChains(int num, std::vector<std::pair<int32_t , std::string> > *chains, const std::string &clientAddress);
 		std::string getChunkServerAddress(int32_t id);
 		void addBlock(int32_t id, int64_t blockId);
-
+		bool removeChunkServer(const std::string &address);
+		bool handleRegister(const std::string &ip, const RegisterRequest *request, RegisterResponse *response);
+		void handleHeartbeat(const HeartBeatRequest *request, HeartBeatResponse *response);
+		int32_t addChunkServer(const std::string &address, const std::string &ip, const std::string &tag, int64_t quota);
+		bool updateChunkServer(int csId, const std::string &tag, int64_t quota);
 
 	private:
 		void deadCheck();

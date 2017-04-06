@@ -78,4 +78,42 @@ namespace zfs
 	{
 		return _quota;
 	}
+
+	void Disk::seek(int64_t blockId, std::vector<leveldb::Iterator *> *iters)
+	{
+		auto it = _metadb->NewIterator(leveldb::ReadOptions());
+		it->Seek(blockId2Str(blockId));
+		if(it->Valid())
+		{
+			int64_t id;
+			if(1 == sscanf(it->key().data(), "%ld", &id))
+			{
+				iters->push_back(it);
+				return;
+			}
+			else
+			{
+				LOG(WARNING, "[ListBlocks] Unknown meta key: %s\n",
+				    it->key().ToString().c_str());
+			}
+		}
+		delete it;
+	}
+
+	std::string Disk::blockId2Str(int64_t blockId)
+	{
+		char idStr[64];
+		snprintf(idStr, sizeof(idStr), "%13ld", blockId);
+		return std::string(idStr);
+	}
+
+	bool Disk::removeBlockMeta(int64_t blockId)
+	{
+		std::string idStr = blockId2Str(blockId);
+		if(!_metadb->Delete(leveldb::WriteOptions(), idStr).ok())
+		{
+			return false;
+		}
+		return true;
+	}
 }

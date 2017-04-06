@@ -45,47 +45,47 @@ public:
                        const AddBlockRequest* request,
                        AddBlockResponse* response,
                        ::google::protobuf::Closure* done);
-/*    void getFileLocation(::google::protobuf::RpcController* controller,
-                       const FileLocationRequest* request,
-                       FileLocationResponse* response,
-                       ::google::protobuf::Closure* done);
-    void listDirectory(::google::protobuf::RpcController* controller,
-                       const ListDirectoryRequest* request,
-                       ListDirectoryResponse* response,
-                       ::google::protobuf::Closure* done);
-    void stat(::google::protobuf::RpcController* controller,
-                       const StatRequest* request,
-                       StatResponse* response,
-                       ::google::protobuf::Closure* done);
-    void rename(::google::protobuf::RpcController* controller,
-                       const RenameRequest* request,
-                       RenameResponse* response,
-                       ::google::protobuf::Closure* done);
-    void unlink(::google::protobuf::RpcController* controller,
-                       const UnlinkRequest* request,
-                       UnlinkResponse* response,
-                       ::google::protobuf::Closure* done);
-    void deleteDirectory(::google::protobuf::RpcController* controller,
-                         const DeleteDirectoryRequest* request,
-                         DeleteDirectoryResponse* response,
-                         ::google::protobuf::Closure* done);
-    void syncBlock(::google::protobuf::RpcController* controller,
-                       const SyncBlockRequest* request,
-                       SyncBlockResponse* response,
-                       ::google::protobuf::Closure* done);
-    void finishBlock(::google::protobuf::RpcController* controller,
-                       const FinishBlockRequest* request,
-                       FinishBlockResponse* response,
-                       ::google::protobuf::Closure* done);
-    void changeReplicaNum(::google::protobuf::RpcController* controller,
-                       const ChangeReplicaNumRequest* request,
-                       ChangeReplicaNumResponse* response,
-                       ::google::protobuf::Closure* done);
+//    void getFileLocation(::google::protobuf::RpcController* controller,
+//                       const FileLocationRequest* request,
+//                       FileLocationResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void listDirectory(::google::protobuf::RpcController* controller,
+//                       const ListDirectoryRequest* request,
+//                       ListDirectoryResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void stat(::google::protobuf::RpcController* controller,
+//                       const StatRequest* request,
+//                       StatResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void rename(::google::protobuf::RpcController* controller,
+//                       const RenameRequest* request,
+//                       RenameResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void unlink(::google::protobuf::RpcController* controller,
+//                       const UnlinkRequest* request,
+//                       UnlinkResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void deleteDirectory(::google::protobuf::RpcController* controller,
+//                         const DeleteDirectoryRequest* request,
+//                         DeleteDirectoryResponse* response,
+//                         ::google::protobuf::Closure* done);
+//    void syncBlock(::google::protobuf::RpcController* controller,
+//                       const SyncBlockRequest* request,
+//                       SyncBlockResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void finishBlock(::google::protobuf::RpcController* controller,
+//                       const FinishBlockRequest* request,
+//                       FinishBlockResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void changeReplicaNum(::google::protobuf::RpcController* controller,
+//                       const ChangeReplicaNumRequest* request,
+//                       ChangeReplicaNumResponse* response,
+//                       ::google::protobuf::Closure* done);
     void heartBeat(::google::protobuf::RpcController* controller,
                        const HeartBeatRequest* request,
                        HeartBeatResponse* response,
                        ::google::protobuf::Closure* done);
-    void registerService(::google::protobuf::RpcController* controller,
+    void doRegister(::google::protobuf::RpcController* controller,
                        const ::zfs::RegisterRequest* request,
                        ::zfs::RegisterResponse* response,
                        ::google::protobuf::Closure* done);
@@ -93,47 +93,47 @@ public:
                        const BlockReportRequest* request,
                        BlockReportResponse* response,
                        ::google::protobuf::Closure* done);
-    void blockReceived(::google::protobuf::RpcController* controller,
-                       const BlockReceivedRequest* request,
-                       BlockReceivedResponse* response,
-                       ::google::protobuf::Closure* done);
-    void pushBlockReport(::google::protobuf::RpcController* controller,
-                       const PushBlockReportRequest* request,
-                       PushBlockReportResponse* response,
-                       ::google::protobuf::Closure* done);
-    void sysStat(::google::protobuf::RpcController* controller,
-                       const SysStatRequest* request,
-                       SysStatResponse* response,
-                       ::google::protobuf::Closure* done);
-    void shutdownChunkServer(::google::protobuf::RpcController* controller,
-            const ShutdownChunkServerRequest* request,
-            ShutdownChunkServerResponse* response,
-            ::google::protobuf::Closure* done);
-    void shutdownChunkServerStat(::google::protobuf::RpcController* controller,
-            const ShutdownChunkServerStatRequest* request,
-            ShutdownChunkServerStatResponse* response,
-            ::google::protobuf::Closure* done);
-    void diskUsage(::google::protobuf::RpcController* controller,
-            const DiskUsageRequest* request,
-            DiskUsageResponse* response,
-            ::google::protobuf::Closure* done);
-    void symlink(::google::protobuf::RpcController* controller,
-            const SymlinkRequest* request,
-            SymlinkResponse* response,
-            ::google::protobuf::Closure* done);
-    void chmod(::google::protobuf::RpcController* controller,
-            const ChmodRequest* request,
-            ChmodResponse* response,
-            ::google::protobuf::Closure* done);
-    bool webService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
-*/
+//    void blockReceived(::google::protobuf::RpcController* controller,
+//                       const BlockReceivedRequest* request,
+//                       BlockReceivedResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void pushBlockReport(::google::protobuf::RpcController* controller,
+//                       const PushBlockReportRequest* request,
+//                       PushBlockReportResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void sysStat(::google::protobuf::RpcController* controller,
+//                       const SysStatRequest* request,
+//                       SysStatResponse* response,
+//                       ::google::protobuf::Closure* done);
+//    void shutdownChunkServer(::google::protobuf::RpcController* controller,
+//            const ShutdownChunkServerRequest* request,
+//            ShutdownChunkServerResponse* response,
+//            ::google::protobuf::Closure* done);
+//    void shutdownChunkServerStat(::google::protobuf::RpcController* controller,
+//            const ShutdownChunkServerStatRequest* request,
+//            ShutdownChunkServerStatResponse* response,
+//            ::google::protobuf::Closure* done);
+//    void diskUsage(::google::protobuf::RpcController* controller,
+//            const DiskUsageRequest* request,
+//            DiskUsageResponse* response,
+//            ::google::protobuf::Closure* done);
+//    void symlink(::google::protobuf::RpcController* controller,
+//            const SymlinkRequest* request,
+//            SymlinkResponse* response,
+//            ::google::protobuf::Closure* done);
+//    void chmod(::google::protobuf::RpcController* controller,
+//            const ChmodRequest* request,
+//            ChmodResponse* response,
+//            ::google::protobuf::Closure* done);
+//    bool webService(const sofa::pbrpc::HTTPRequest&, sofa::pbrpc::HTTPResponse&);
+
 private:
 
     void checkLeader();
     void rebuildBlockMapCallback(const FileInfo &fileInfo);
     void logStatus();
     void checkRecoverMode();
-//    void leaveReadOnly();
+    void leaveReadOnly();
 //    void listRecover(sofa::pbrpc::HTTPResponse* response);
     bool logRemote(const NameServerLog& log, std::function<void (bool)> callback);
     void syncLogCallback(::google::protobuf::RpcController* controller,

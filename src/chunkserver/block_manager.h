@@ -10,6 +10,7 @@
 #include "../proto/status_code.pb.h"
 
 #include <common/thread_pool.h>
+#include <leveldb/iterator.h>
 
 #include "counter_manager.h"
 #include "../proto/block.pb.h"
@@ -33,11 +34,13 @@ namespace zfs
 		int64_t namespaceVersion() const;
 		bool setNamespaceVersion(int64_t version);
 		bool addBlock(int64_t blockId, Disk *disk, BlockMeta meta);
-		int64_t listBlock(std::vector<BlockMeta> *blocks, int64_t offset, int32_t num);
+		int64_t listBlocks(std::vector<BlockMeta> *blocks, int64_t offset, int32_t num);
+		bool cleanUp(int64_t namespaceVersion);
 
 	private:
 		void checkStorePath(const std::string &storePath);
 		void logStatus();
+		int64_t findSmallest(std::vector<leveldb::Iterator*> &iters, int32_t *idx);
 
 
 	private:

@@ -29,11 +29,16 @@ namespace zfs
 	public:
 		Disk(const std::string &path, int64_t quota);
 		~Disk();
+		void seek(int64_t blockId, std::vector<leveldb::Iterator*> *iters);
 
 		bool loadStorage(std::function<void (int64_t, Disk*, BlockMeta)> callback);
 		int64_t namespaceVersion() const;
 		bool setNamespaceVersion(int64_t version);
 		int64_t getQuota();
+		bool removeBlockMeta(int64_t blockId);
+
+	private:
+		std::string blockId2Str(int64_t blockId);
 
 	private:
 		friend class Block;

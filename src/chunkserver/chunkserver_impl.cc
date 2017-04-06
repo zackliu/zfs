@@ -155,16 +155,102 @@ namespace zfs
 
 	void ChunkServerImpl::sendBlockReport()
 	{
+		//发本地blocks信息
 		BlockReportRequest request;
+		BlockReportResponse response;
 		request.set_sequenceid(baidu::common::timer::get_micros());
 		request.set_chunkserverid(_chunkServerId);
 		request.set_chunkserveraddr(_dataServerAddress);
 		request.set_start(_lastReportBlockId + 1);
 		request.set_reportid(_reportId);
-		int64_t last_report_id = _reportId;
+		int64_t lastReportId = _reportId;
 
 		std::vector<BlockMeta> blocks;
 		int32_t num = _isFirstRound ? 10000 : _param.reportsize();
 		int64_t end = _blockManager->listBlocks(&blocks, _lastReportBlockId+1, num);
+
+		if(_isFirstRound && (_lastReportBlockId+1) <= _firstRoundReportStart &&
+				_firstRoundReportStart <= end)
+		{
+			_isFirstRound = false;
+		}
+
+		if(_isFirstRound && _firstRoundReportStart == -1) _firstRoundReportStart = 0;
+
+		int blocksNum = blocks.size();
+		for(int64_t i = 0; i < blocksNum; i++)
+		{
+			ReportBlockInfo *info = request.add_blocks();
+			info->set_blockid(blocks[i].block_id());
+			info->set_blocksize(blocks[i].block_size());
+			info->set_version(blocks[i].version());
+		}
+
+		if(blocksNum < num)
+		{
+			_lastReportBlockId = -1;
+			end = LLONG_MAX;
+		}
+		else
+		{
+			_lastReportBlockId = end;
+		}
+		request.set_end(end);
+
+		baidu::common::timer::TimeChecker checker;
+		bool result = _nameServerClient->sendRequest(&NameServer_Stub::blockReport, &request, &response, FLAGS_block_report_timeout);
+		checker.Check(20*1000*1000, "[SendBlockReport] SendRequest");
+
+		if(!result)
+		{
+			LOG(WARNING, "report block failed");
+		}
+		else
+		{
+			if(response.status() != kOK)
+			{
+				_lastReportBlockId = -1;
+				_reportId = 0;
+				LOG(WARNING, "send block report failed");
+				return;
+			}
+
+			//处理废弃blocks
+			_reportId = response.reportid()+1;
+			std::vector<int64_t > obsoleteBlocks;
+			for(int i = 0; i < response.obsoleteblocks_size(); i++)
+			{
+				obsoleteBlocks.push_back(response.obsoleteblocks(i));
+			}
+
+			if(!obsoleteBlocks.empty())
+			{
+				_writeThreadPool->AddTask(std::bind(&ChunkServerImpl::removeObsoleteBlocks, this, obsoleteBlocks));
+			}
+
+			g_recover_count.Add(response.newreplicas_size());
+
+			//处理新replica
+			for(int i = 0; i < response.newreplicas_size(); i++)
+			{
+				const ReplicaInfo &rep = response.newreplicas(i);
+				int32_t cancelTime = baidu::common::timer::now_time() + rep.recovertimeout();
+				auto newReplicaTask = std::bind(&ChunkServerImpl::pushBack, this, rep, cancelTime);
+
+				_recoverThreadPool->AddTask(newReplicaTask);
+			}
+
+			//处理incompleteBlock
+			for(int i = 0; i < response.closeblocks_size(); i++)
+			{
+				auto closeBlockTask = std::bind(&ChunkServerImpl::closeIncompleteBlock, this, response.closeblocks(i));
+				_writeThreadPool->AddTask(closeBlockTask);
+			}
+		}
+
+		_blockreportTaskId = _workThreadPool->DelayTask(_param.reportinterval()*1000, std::bind(&ChunkServerImpl::sendBlockReport, this));
+
+
+
 	}
 }

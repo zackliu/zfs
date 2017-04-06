@@ -263,4 +263,107 @@ namespace zfs
 		}
 	}
 
+	void NameServerImpl::blockReport(::google::protobuf::RpcController *controller, const BlockReportRequest *request,
+	                                 BlockReportResponse *response, ::google::protobuf::Closure *done)
+	{
+		gBlockReport.Inc();
+
+		int32_t csId = request->chunkserverid();
+		int64_t reportId = request->reportid();
+
+		const ::google::protobuf::RepeatedPtrField<ReportBlockInfo> &blocks = request->blocks();
+
+		int64_t startReport = baidu::common::timer::get_micros();
+		int oldId = _chunkserverManager->getChunkServerId(request->chunkserveraddr());
+		if(csId != oldId)
+		{
+			response->set_status(kUnknownCs);
+			done->Run();
+			return;
+		}
+
+		//根据获取的block更新blockmapping
+		std::set<int64_t > insertBlocks;
+		for(int i = 0; i < blocks.size(); i++)
+		{
+			gReportBlocks.Inc();
+			const ReportBlockInfo &block = blocks.Get(i);
+			int64_t curBlockId = block.blockid();
+			int64_t curBlockSize = block.blocksize();
+
+			int64_t blockVersion = block.version();
+			if(!_blockMapping->updateBlockInfo(curBlockId, csId, curBlockSize, blockVersion))
+			{
+				response->add_obsoleteblocks(curBlockId);
+				_chunkserverManager->removeBlock(csId, curBlockId);
+				continue;
+			}
+			else insertBlocks.insert(curBlockId);
+		}
+
+		std::vector<int64_t> lost;
+		int64_t  result = _chunkserverManager->addBlockWithCheck(csId, insertBlocks, request->start(), request->end(), &lost, reportId);
+		if(lost.size() != 0)
+		{
+			for(int i = 0; i < lost.size(); i++)
+			{
+				_blockMapping->dealWithDeadBlock(csId, lost[i]);
+			}
+		}
+		response->set_reportid(result);
+
+		if(_recoverMode != kStopRecover)
+		{
+			RecoverVec recoverBlocks;
+			int hiNum = 0;
+			_chunkserverManager->PickRecoverBlocks(csId, &recoverBlocks, &hiNum, _recoverMode == kHiRecover);
+			for(auto it = recoverBlocks.begin(); it != recoverBlocks.end(); it++)
+			{
+				ReplicaInfo *rep = response->add_newreplicas();
+				rep->set_blockid((*it).first);
+				for(auto destIt = it->second.begin(); destIt != it->second.end(); destIt++)
+				{
+					rep->add_chunkserveraddress(*destIt);
+				}
+				rep->set_recovertimeout(FLAGS_lo_recover_timeout);
+			}
+		}
+
+		_blockMapping->getCloseBlocks(csId, response->mutable_closeblocks());
+		response->set_status(kOK);
+		done->Run();
+	}
+
+	void NameServerImpl::doRegister(::google::protobuf::RpcController *controller,
+	                                const ::zfs::RegisterRequest *request, ::zfs::RegisterResponse *response,
+	                                ::google::protobuf::Closure *done)
+	{
+		sofa::pbrpc::RpcController *sofaCntl = reinterpret_cast<sofa::pbrpc::RpcController*>(controller);
+
+		const std::string &address = request->chunkserveraddr();
+		const std::string &ipAddress = sofaCntl->RemoteAddress();
+		const std::string csIp = ipAddress.substr(ipAddress.find(':'));
+
+		int64_t version = request->namespaceversion();
+		if(version != _namespace->getVersion())
+		{
+			_chunkserverManager->removeChunkServer(address);
+		}
+		else
+		{
+			if(_chunkserverManager->handleRegister(csIp, request, response))
+			{
+				//当chunkserver数量大于expect
+				leaveReadOnly();
+			}
+		}
+		response->set_namespaceversion(_namespace->getVersion());
+		done->Run();
+	}
+
+	void NameServerImpl::leaveReadOnly()
+	{
+		if(_readonly) _readonly = false;
+	}
+
 }
